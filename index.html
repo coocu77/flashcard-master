@@ -1,0 +1,2093 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcard Master</title>
+  
+  <!-- PWA 표준 모바일 메타 태그 및 스타일 구성 -->
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Flashcard Master">
+  <link rel="apple-touch-icon" href="https://placehold.co/192x192/4f46e5/ffffff?text=FM">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+    body {
+      font-family: 'Inter', 'Noto Sans KR', sans-serif;
+      background-color: #ffffff;
+      color: #1f2937;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    /* 플래시카드 3D 회전 애니메이션 */
+    .card-container {
+      perspective: 1000px;
+    }
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-style: preserve-3d;
+    }
+    .card-inner.is-flipped {
+      transform: rotateY(180deg);
+    }
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .card-back {
+      transform: rotateY(180deg);
+    }
+    /* 제스처 가이드 인디케이터 */
+    .gesture-indicator {
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+  <!-- 상단 네비게이션 및 PWA 설치 간편 트리거 영역 -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="app.showScreen('folder-list')">
+        <div class="bg-indigo-600 text-white p-2 rounded-xl">
+          <i data-lucide="layers" class="w-6 h-6"></i>
+        </div>
+        <span class="font-bold text-xl tracking-tight flex items-baseline">
+          <span>Flashcard <span class="text-indigo-600">Master</span></span>
+          <span class="text-xs text-gray-400 font-normal ml-2 whitespace-nowrap">by 이경혜</span>
+        </span>
+      </div>
+      
+      <div class="flex items-center space-x-2">
+        <!-- PWA 설치 버튼 (조건부 활성화) -->
+        <button id="pwa-install-btn" onclick="app.triggerInstall()" class="hidden items-center space-x-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3.5 py-2 rounded-xl text-xs font-bold transition animate-pulse shadow-sm">
+          <i data-lucide="download-cloud" class="w-4 h-4"></i>
+          <span>앱 설치</span>
+        </button>
+        
+        <button onclick="app.showBackupRestoreModal()" class="p-2 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition" title="데이터 백업, 복구 및 PWA">
+          <i data-lucide="database" class="w-5 h-5"></i>
+        </button>
+        <button onclick="app.resetToDefaultData()" class="p-2 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50 transition" title="초기 샘플 데이터 재설정">
+          <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 콘텐츠 영역 -->
+  <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-6">
+
+    <!-- 1. 폴더 목록 화면 -->
+    <section id="screen-folder-list" class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900">내 학습 보관함</h2>
+          <p class="text-gray-500 text-sm">폴더로 단어장을 분류하여 체계적으로 학습해 보세요.</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="app.openNewFolderModal()" class="flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-sm transition">
+            <i data-lucide="folder-plus" class="w-5 h-5"></i>
+            <span>새 폴더 만들기</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 폴더 목록 그리드 -->
+      <div id="folder-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- 동적 삽입 영역 -->
+      </div>
+    </section>
+
+    <!-- 2. 단어장 목록 및 편집 화면 (특정 폴더 진입시) -->
+    <section id="screen-deck-list" class="hidden space-y-6">
+      <div class="flex items-center space-x-2 text-gray-500 text-sm">
+        <button onclick="app.showScreen('folder-list')" class="hover:text-indigo-600 transition flex items-center">
+          <i data-lucide="chevron-left" class="w-4 h-4 mr-1"></i>폴더 목록
+        </button>
+        <span>/</span>
+        <span id="deck-list-breadcrumb" class="font-medium text-gray-800">폴더명</span>
+      </div>
+
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200">
+        <div class="space-y-1">
+          <div class="flex items-center space-x-2">
+            <h2 id="current-folder-title" class="text-2xl font-bold text-gray-900">폴더 제목</h2>
+            <button onclick="app.openEditFolderModal()" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition">
+              <i data-lucide="edit-3" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <p id="current-folder-desc" class="text-gray-500 text-sm">폴더 설명</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="app.openNewDeckModal()" class="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium transition">
+            <i data-lucide="plus-square" class="w-5 h-5"></i>
+            <span>새 단어장</span>
+          </button>
+          <button onclick="app.deleteFolderPrompt()" class="flex items-center space-x-2 border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-xl font-medium transition">
+            <i data-lucide="trash-2" class="w-5 h-5"></i>
+            <span>폴더 삭제</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 단어장(Deck) 그리드 -->
+      <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 동적 삽입 영역 -->
+      </div>
+    </section>
+
+    <!-- 3. 단어장 편집 및 학습 관리 화면 -->
+    <section id="screen-deck-detail" class="hidden space-y-6">
+      <div class="flex items-center space-x-2 text-gray-500 text-sm">
+        <button id="deck-detail-back-btn" class="hover:text-indigo-600 transition flex items-center">
+          <i data-lucide="chevron-left" class="w-4 h-4 mr-1"></i>이전 화면
+        </button>
+        <span>/</span>
+        <span id="deck-detail-breadcrumb" class="font-medium text-gray-800">단어장명</span>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl border border-gray-200 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <div class="flex items-center space-x-2">
+              <h2 id="current-deck-title" class="text-2xl font-bold text-gray-900">단어장 제목</h2>
+              <button onclick="app.openEditDeckModal()" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+              </button>
+            </div>
+            <p id="current-deck-desc" class="text-gray-500 text-sm mt-1">단어장 설명</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="app.startStudySession()" id="start-study-btn" class="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-semibold shadow-sm transition">
+              <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+              <span>학습 시작</span>
+            </button>
+            <button onclick="app.openShareDeckModal()" class="flex items-center space-x-2 border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl font-medium transition">
+              <i data-lucide="share-2" class="w-5 h-5"></i>
+              <span>공유하기</span>
+            </button>
+            <button onclick="app.deleteDeckPrompt()" class="flex items-center justify-center text-red-500 hover:bg-red-50 border border-red-100 p-2.5 rounded-xl transition" title="단어장 삭제">
+              <i data-lucide="trash-2" class="w-5 h-5"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center space-x-3">
+            <div class="bg-indigo-100 text-indigo-600 p-2.5 rounded-lg">
+              <i data-lucide="copy" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <p class="text-xs text-gray-400 font-medium">총 단어 수</p>
+              <p id="deck-card-count" class="text-lg font-bold text-gray-800">0개</p>
+            </div>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center space-x-3">
+            <div class="bg-green-100 text-green-600 p-2.5 rounded-lg">
+              <i data-lucide="check-circle" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <p class="text-xs text-gray-400 font-medium">최근 정답률</p>
+              <p id="deck-success-rate" class="text-lg font-bold text-gray-800">-</p>
+            </div>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center space-x-3">
+            <div class="bg-yellow-100 text-yellow-600 p-2.5 rounded-lg">
+              <i data-lucide="calendar" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <p class="text-xs text-gray-400 font-medium">마지막 학습일</p>
+              <p id="deck-last-studied" class="text-lg font-bold text-gray-800">기록 없음</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 단어 관리 목록 섹션 -->
+      <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 class="font-bold text-lg text-gray-900">단어 목록</h3>
+            <p class="text-xs text-gray-400">직접 단어를 편집하거나 엑셀 파일을 업로드해 보세요.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="app.openExcelUploadModal()" class="flex items-center space-x-1.5 border border-emerald-200 hover:bg-emerald-50 text-emerald-700 px-3.5 py-2 rounded-xl text-sm font-medium transition">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+              <span>엑셀/CSV 업로드</span>
+            </button>
+            <button onclick="app.openAddWordModal()" class="flex items-center space-x-1.5 bg-gray-900 hover:bg-gray-800 text-white px-3.5 py-2 rounded-xl text-sm font-medium transition">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>단어 추가</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th class="py-3 px-6">문제 (앞면)</th>
+                <th class="py-3 px-6">정답 (뒷면)</th>
+                <th class="py-3 px-6 hidden md:table-cell">법 / 추가 설명</th>
+                <th class="py-3 px-6 text-right">작업</th>
+              </tr>
+            </thead>
+            <tbody id="words-table-body" class="divide-y divide-gray-100 text-sm">
+              <!-- 단어 목록 동적 삽입 -->
+            </tbody>
+          </table>
+          <div id="empty-words-placeholder" class="hidden p-12 text-center space-y-3">
+            <div class="text-gray-300 flex justify-center">
+              <i data-lucide="box" class="w-12 h-12"></i>
+            </div>
+            <p class="text-gray-500 font-medium">등록된 단어가 없습니다.</p>
+            <p class="text-gray-400 text-xs">단어 추가 또는 CSV 업로드를 통해 단어를 채워보세요!</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 플래시카드 학습 세션 화면 -->
+    <section id="screen-study" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <button onclick="app.quitStudySessionPrompt()" class="flex items-center text-gray-500 hover:text-red-500 transition text-sm font-medium">
+          <i data-lucide="x" class="w-5 h-5 mr-1"></i>학습 종료
+        </button>
+        <div class="flex items-center space-x-4">
+          <span class="bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-full font-semibold">
+            남은 카드: <span id="study-progress-count">0/0</span>
+          </span>
+          <span class="bg-red-50 text-red-600 text-xs px-2.5 py-1 rounded-full font-semibold hidden" id="failed-relearn-badge">
+            재학습 모드
+          </span>
+        </div>
+      </div>
+
+      <!-- 상단 상호작용 진행도 표시기 -->
+      <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+        <div id="study-progress-bar" class="bg-indigo-600 h-1.5 transition-all duration-300" style="width: 0%"></div>
+      </div>
+
+      <!-- 스와이프 인터렉티브 가이드 보드 -->
+      <div class="grid grid-cols-3 gap-2 text-center text-xs text-gray-400 max-w-lg mx-auto">
+        <div class="bg-white border border-gray-100 p-2 rounded-xl flex flex-col items-center justify-center">
+          <i data-lucide="arrow-left" class="w-4 h-4 text-blue-500 mb-0.5"></i>
+          <span>← 밀기: 안다</span>
+        </div>
+        <div class="bg-white border border-gray-100 p-2 rounded-xl flex flex-col items-center justify-center">
+          <i data-lucide="arrow-up" class="w-4 h-4 text-indigo-500 mb-0.5"></i>
+          <span>↑ 밀기: 확실히 안다</span>
+        </div>
+        <div class="bg-white border border-gray-100 p-2 rounded-xl flex flex-col items-center justify-center">
+          <i data-lucide="arrow-down" class="w-4 h-4 text-orange-500 mb-0.5"></i>
+          <span>↓ 밀기: 모른다</span>
+        </div>
+      </div>
+
+      <!-- 메인 스와이프 인터페이스 컨테이너 -->
+      <div class="relative w-full max-w-lg mx-auto h-[400px] flex items-center justify-center card-container mt-4">
+        
+        <!-- 제스처 피드백 레이블 (카드 위에 오버레이) -->
+        <div id="indicator-know" class="gesture-indicator absolute z-30 opacity-0 bg-blue-500 text-white text-lg font-bold px-6 py-3 rounded-full shadow-lg pointer-events-none transform -translate-x-12 scale-90">
+          안다 (Next)
+        </div>
+        <div id="indicator-perfect" class="gesture-indicator absolute z-30 opacity-0 bg-indigo-600 text-white text-lg font-bold px-6 py-3 rounded-full shadow-lg pointer-events-none transform -translate-y-12 scale-90">
+          확실히 안다!
+        </div>
+        <div id="indicator-dontknow" class="gesture-indicator absolute z-30 opacity-0 bg-orange-500 text-white text-lg font-bold px-6 py-3 rounded-full shadow-lg pointer-events-none transform translate-y-12 scale-90">
+          모른다 (재학습)
+        </div>
+        <div id="indicator-prev" class="gesture-indicator absolute z-30 opacity-0 bg-gray-600 text-white text-lg font-bold px-6 py-3 rounded-full shadow-lg pointer-events-none transform translate-x-12 scale-90">
+          이전 카드로
+        </div>
+
+        <!-- 3D 회전 카드 몸체 -->
+        <div id="swipe-card" class="card-inner w-full h-full bg-white rounded-3xl border-2 border-gray-200 shadow-xl cursor-pointer select-none">
+          
+          <!-- 카드 앞면 -->
+          <div class="card-face card-front absolute inset-0 flex flex-col p-8 justify-between bg-white rounded-3xl">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-semibold text-gray-400 tracking-wider">FRONT (문제)</span>
+              <span class="text-xs text-indigo-500 font-medium">터치하여 뒤집기</span>
+            </div>
+            <div class="flex-grow flex flex-col items-center justify-center text-center px-4">
+              <h3 id="card-front-text" class="text-3xl font-bold text-gray-800 break-all leading-snug">Question</h3>
+              <p id="card-front-desc" class="text-sm text-gray-400 mt-4 max-h-16 overflow-y-auto">법령/참고 정보</p>
+            </div>
+            <div class="text-center text-xs text-gray-300">
+              밀어서 정답 처리 | 클릭하여 뒤집기
+            </div>
+          </div>
+
+          <!-- 카드 뒷면 -->
+          <div class="card-face card-back absolute inset-0 flex flex-col p-8 justify-between bg-indigo-50 rounded-3xl border-2 border-indigo-200">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-semibold text-indigo-600 tracking-wider">BACK (답)</span>
+              <span class="text-xs text-indigo-500 font-medium">터치하여 뒤집기</span>
+            </div>
+            <div class="flex-grow flex flex-col items-center justify-center text-center px-4">
+              <h3 id="card-back-text" class="text-3xl font-bold text-indigo-900 break-all leading-snug">Answer</h3>
+            </div>
+            <div class="text-center text-xs text-indigo-400">
+              밀어서 정답 처리 | 클릭하여 뒤집기
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 보조 조작 버튼 영역 (터치 미지원 기기 또는 클릭 중심의 제어 대응) -->
+      <div class="flex flex-col items-center space-y-4 max-w-lg mx-auto">
+        <div class="grid grid-cols-4 gap-2 w-full">
+          <button onclick="app.swipeAction('prev')" class="flex flex-col items-center justify-center p-3 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition text-gray-600">
+            <i data-lucide="corner-up-left" class="w-5 h-5 mb-1 text-gray-500"></i>
+            <span class="text-xs font-medium">이전 카드</span>
+          </button>
+          <button onclick="app.swipeAction('dontknow')" class="flex flex-col items-center justify-center p-3 bg-white border border-gray-200 hover:bg-orange-50 rounded-xl transition text-orange-600">
+            <i data-lucide="thumbs-down" class="w-5 h-5 mb-1 text-orange-500"></i>
+            <span class="text-xs font-medium">모른다</span>
+          </button>
+          <button onclick="app.swipeAction('know')" class="flex flex-col items-center justify-center p-3 bg-white border border-gray-200 hover:bg-blue-50 rounded-xl transition text-blue-600">
+            <i data-lucide="thumbs-up" class="w-5 h-5 mb-1 text-blue-500"></i>
+            <span class="text-xs font-medium">안다</span>
+          </button>
+          <button onclick="app.swipeAction('perfect')" class="flex flex-col items-center justify-center p-3 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 rounded-xl transition text-indigo-700">
+            <i data-lucide="sparkles" class="w-5 h-5 mb-1 text-indigo-600"></i>
+            <span class="text-xs font-medium">확실히!</span>
+          </button>
+        </div>
+        <button onclick="app.flipCard()" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition py-1 px-4 rounded-lg bg-indigo-50 hover:bg-indigo-100">
+          스페이스바 혹은 클릭하여 앞뒤 뒤집기
+        </button>
+      </div>
+    </section>
+
+    <!-- 5. 결과 및 통계 화면 -->
+    <section id="screen-result" class="hidden max-w-2xl mx-auto space-y-6">
+      <div class="bg-white p-8 rounded-3xl border border-gray-200 shadow-xl text-center space-y-6">
+        <div class="inline-flex items-center justify-center bg-indigo-100 text-indigo-600 p-4 rounded-full">
+          <i data-lucide="trophy" class="w-12 h-12"></i>
+        </div>
+        
+        <div class="space-y-2">
+          <h2 class="text-3xl font-extrabold text-gray-900">학습 완료!</h2>
+          <p class="text-gray-500">지식이 한 단계 더 견고해졌습니다.</p>
+        </div>
+
+        <!-- 원형 학습 성과 통계 그래프 -->
+        <div class="py-6 flex flex-col items-center justify-center">
+          <div class="relative w-40 h-40 flex items-center justify-center">
+            <!-- SVG 원형 차트 -->
+            <svg class="w-full h-full transform -rotate-90">
+              <circle cx="80" cy="80" r="70" stroke="#f3f4f6" stroke-width="12" fill="transparent" />
+              <circle id="result-chart-bar" cx="80" cy="80" r="70" stroke="#4f46e5" stroke-width="12" fill="transparent" 
+                stroke-dasharray="439.8" stroke-dashoffset="439.8" class="transition-all duration-1000 ease-out" />
+            </svg>
+            <div class="absolute flex flex-col items-center justify-center">
+              <span id="result-success-rate" class="text-3xl font-extrabold text-gray-800">0%</span>
+              <span class="text-xs text-gray-400 font-semibold tracking-wider">정답률</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 세부 스코어 리스트 -->
+        <div class="grid grid-cols-3 gap-4 border-t border-b border-gray-100 py-6">
+          <div>
+            <p class="text-2xl font-bold text-indigo-600" id="result-perfect-count">0</p>
+            <p class="text-xs text-gray-400 font-medium">확실히 안다</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-blue-500" id="result-know-count">0</p>
+            <p class="text-xs text-gray-400 font-medium">안다</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-orange-500" id="result-dontknow-count">0</p>
+            <p class="text-xs text-gray-400 font-medium">모른다</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button onclick="app.startStudySession()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl transition shadow-md">
+            다시 학습하기
+          </button>
+          <button id="result-relearn-failed-btn" onclick="app.startRelearnSession()" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 px-6 rounded-2xl transition shadow-md hidden">
+            틀린 단어만 재학습
+          </button>
+          <button onclick="app.goToCurrentDeck()" class="flex-1 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold py-3.5 px-6 rounded-2xl transition">
+            단어장으로 돌아가기
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 푸터 -->
+  <footer class="bg-white border-t border-gray-100 py-6 text-center text-xs text-gray-400">
+    <div class="max-w-5xl mx-auto px-4">
+      <p>© 2026 Flashcard Master. All Rights Reserved.</p>
+    </div>
+  </footer>
+
+  <!-- ==================== 모달창 모음 ==================== -->
+
+  <!-- 1. 새 폴더 / 폴더 편집 모달 -->
+  <div id="modal-folder" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+        <h3 id="modal-folder-title" class="text-lg font-bold">폴더 만들기</h3>
+        <button onclick="app.closeModal('folder')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+      </div>
+      <input type="hidden" id="modal-folder-id">
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">폴더 이름</label>
+          <input type="text" id="modal-folder-name" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="예: 공인중개사 시험 공부">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">폴더 설명</label>
+          <textarea id="modal-folder-desc-input" rows="3" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder="이 폴더에 담을 주제들을 메모하세요."></textarea>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-2 pt-2">
+        <button onclick="app.closeModal('folder')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
+        <button onclick="app.saveFolder()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 새 단어장 / 단어장 편집 모달 -->
+  <div id="modal-deck" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+        <h3 id="modal-deck-title" class="text-lg font-bold">단어장 만들기</h3>
+        <button onclick="app.closeModal('deck')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+      </div>
+      <input type="hidden" id="modal-deck-id">
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">단어장 이름</label>
+          <input type="text" id="modal-deck-name" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="예: 민법 1차 핵심 판례">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">단어장 설명</label>
+          <textarea id="modal-deck-desc-input" rows="3" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder="이 단어장에서 다루는 범위를 메모하세요."></textarea>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-2 pt-2">
+        <button onclick="app.closeModal('deck')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
+        <button onclick="app.saveDeck()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 단어 추가 / 편집 모달 -->
+  <div id="modal-word" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+        <h3 id="modal-word-title" class="text-lg font-bold">단어 등록</h3>
+        <button onclick="app.closeModal('word')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+      </div>
+      <input type="hidden" id="modal-word-id">
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">문제 (앞장)</label>
+          <input type="text" id="modal-word-front" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="질문 또는 외울 단어를 입력하세요">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">답 (뒷장)</label>
+          <input type="text" id="modal-word-back" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="의미나 정답을 입력하세요">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">법 / 설명 (선택사항)</label>
+          <textarea id="modal-word-desc" rows="2" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder="관련 법령 혹은 참고할 예문을 남겨주세요"></textarea>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-2 pt-2">
+        <button onclick="app.closeModal('word')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
+        <button onclick="app.saveWord()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition">등록</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 엑셀/CSV 업로드 모달 -->
+  <div id="modal-excel" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+        <h3 class="text-lg font-bold">엑셀/CSV 업로드 및 양식 다운로드</h3>
+        <button onclick="app.closeModal('excel')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+      </div>
+      
+      <div class="bg-indigo-50 p-5 rounded-2xl text-xs text-indigo-900 leading-relaxed space-y-3 border border-indigo-100">
+        <div class="flex items-center justify-between">
+          <p class="font-bold text-sm text-indigo-950">업로드 및 작성 가이드</p>
+          <button onclick="app.downloadTemplateCSV()" class="flex items-center space-x-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold shadow-sm transition">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>엑셀 양식 다운로드</span>
+          </button>
+        </div>
+        <p>1. 위 **[엑셀 양식 다운로드]** 버튼을 눌러 기본 포맷을 확보하세요.</p>
+        <p>2. 엑셀이나 메모장 등으로 다운로드한 파일(.csv)을 열어 내용을 알맞게 채워 넣으세요.</p>
+        <p>3. 열 구성은 반드시 왼쪽부터 다음 순서와 일치해야 합니다.</p>
+        <p class="bg-white/90 p-2 rounded-lg font-mono border border-indigo-100 text-indigo-950 font-medium">문제(앞면), 정답(뒷면), 법령 또는 참고설명(선택)</p>
+        <p class="text-indigo-600">※ 엑셀 인코딩 자동 교정 기능이 추가되어 일반 엑셀에서 바로 수정한 뒤 저장하여 올려도 한글이 깨지지 않습니다.</p>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">CSV 파일 업로드</label>
+          <input type="file" id="excel-file-input" accept=".csv,text/csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-dashed border-gray-300 p-4 rounded-xl" />
+        </div>
+        
+        <!-- 직접 붙여넣기 기능 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">혹은 엑셀 데이터 직접 복사해서 붙여넣기 (탭/쉼표 구분)</label>
+          <textarea id="excel-text-import" rows="4" class="w-full text-xs font-mono p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="예시:&#13;선의의 제3자	어떤 사정을 알지 못하는 제3자	민법 제107조&#13;반사회질서 행위	선량한 풍속에 반하는 행위	민법 제103조"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2">
+        <button onclick="app.closeModal('excel')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
+        <button onclick="app.processImport()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition">업로드 적용</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 공유하기 모달 -->
+  <div id="modal-share" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+        <h3 class="text-lg font-bold">친구와 단어장 공유</h3>
+        <button onclick="app.closeModal('share')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+      </div>
+      <p class="text-xs text-gray-500">아래 코드를 복사하여 친구에게 메신저나 이메일로 보내보세요. 친구가 복원 메뉴에 이 코드를 붙여넣어 완벽히 복원할 수 있습니다.</p>
+      
+      <div class="space-y-2">
+        <label class="block text-xs font-semibold text-gray-500">공유 코드</label>
+        <textarea id="share-export-code" readonly rows="6" class="w-full text-xs font-mono p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-0 outline-none resize-none"></textarea>
+      </div>
+
+      <div class="flex justify-between items-center pt-2">
+        <span id="share-copied-indicator" class="text-xs text-green-600 font-semibold opacity-0 transition-opacity">복사되었습니다!</span>
+        <div class="flex space-x-2">
+          <button onclick="app.closeModal('share')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">닫기</button>
+          <button onclick="app.copyShareCode()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition">코드 복사</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. 백업 및 복원 통합 관리 모달 (PWA 다운로드 기능 포함) -->
+  <div id="modal-backup-restore" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+        <h3 class="text-lg font-bold">전체 데이터 백업 / 복원</h3>
+        <button onclick="app.closeModal('backup-restore')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+      </div>
+      
+      <div class="space-y-4">
+        <div>
+          <h4 class="text-xs font-bold text-gray-700 mb-1">내 데이터 백업하기</h4>
+          <p class="text-[11px] text-gray-400 mb-2">작성한 모든 폴더, 단어장, 통계 기록이 텍스트 포맷으로 내려옵니다.</p>
+          <button onclick="app.exportAllData()" class="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-2.5 rounded-xl text-sm font-semibold transition">전체 데이터 백업 코드 생성</button>
+        </div>
+
+        <div class="border-t border-gray-100 pt-4">
+          <h4 class="text-xs font-bold text-gray-700 mb-1">데이터 복원 및 친구 공유코드 받기</h4>
+          <p class="text-[11px] text-gray-400 mb-2">백업된 전체 데이터 코드 혹은 공유 받은 단어장 코드를 아래 상자에 입력해 주세요.</p>
+          <textarea id="backup-restore-code" rows="3" class="w-full text-xs font-mono p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="데이터 복원 코드를 이곳에 붙여넣기 해주세요."></textarea>
+        </div>
+
+        <!-- PWA 오프라인 배포 파일 내보내기 세션 -->
+        <div class="border-t border-gray-100 pt-4 bg-gray-50 -mx-6 -mb-6 p-6 rounded-b-2xl">
+          <h4 class="text-xs font-bold text-gray-700 mb-1 flex items-center">
+            <i data-lucide="smartphone" class="w-4 h-4 text-indigo-600 mr-1"></i>
+            <span>오프라인 독립 배포용 PWA 파일 다운로드</span>
+          </h4>
+          <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">
+            독립적인 개인 서버나 웹호스팅 환경에 올려서 완전한 오프라인 웹앱(PWA)으로 구동하고 싶으신가요? 
+            아래 버튼을 눌러 필수 파일(`manifest.json` 및 `sw.js`)을 다운로드 하세요.
+          </p>
+          <button onclick="app.downloadPWAFiles()" class="w-full flex items-center justify-center space-x-2 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 py-2.5 rounded-xl text-xs font-bold transition">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>PWA 필수 자산 다운로드 (sw.js & manifest)</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2 border-t border-gray-100 mt-4">
+        <button onclick="app.closeModal('backup-restore')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
+        <button onclick="app.importBackupData()" class="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">데이터 복원 실행</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 알림/컨펌 토스트 시스템 -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-10 opacity-0 pointer-events-none transition-all duration-300 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 text-sm">
+    <span id="toast-message">메시지</span>
+  </div>
+
+  <!-- 커스텀 컨펌 모달 -->
+  <div id="confirm-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-xs rounded-2xl p-6 shadow-2xl text-center space-y-4">
+      <div id="confirm-icon-holder" class="inline-flex p-3 rounded-full bg-red-100 text-red-600">
+        <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+      </div>
+      <div class="space-y-1">
+        <h4 id="confirm-title" class="font-bold text-lg text-gray-900">확인</h4>
+        <p id="confirm-desc" class="text-xs text-gray-500 leading-relaxed">정말로 진행하시겠습니까?</p>
+      </div>
+      <div class="flex space-x-2">
+        <button id="confirm-cancel-btn" class="flex-1 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 border border-gray-100 rounded-xl transition">취소</button>
+        <button id="confirm-ok-btn" class="flex-1 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition">실행</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 스크립트 비즈니스 로직 ==================== -->
+  <script>
+    // 샘플 기본 데이터 정의
+    const DEFAULT_DATA = {
+      folders: [
+        {
+          id: "folder-1",
+          name: "📚 공인중개사 1차",
+          desc: "민법 및 부동산학개론 필수 출제 용어 요약"
+        },
+        {
+          id: "folder-2",
+          name: "💡 비즈니스 영어",
+          desc: "실무 미팅 및 이메일 표현"
+        }
+      ],
+      decks: [
+        {
+          id: "deck-1",
+          folderId: "folder-1",
+          name: "민법 핵심 판례 용어",
+          desc: "최신 판례 및 출제 빈도가 높은 핵심 민법 용어입니다.",
+          lastStudied: "2026-06-10",
+          successRate: "85%"
+        },
+        {
+          id: "deck-2",
+          folderId: "folder-2",
+          name: "협상 및 계약 영어",
+          desc: "글로벌 비즈니스 거래 및 실무 대화용 패턴 정리",
+          lastStudied: null,
+          successRate: null
+        }
+      ],
+      cards: [
+        { id: "c-1", deckId: "deck-1", front: "선의의 제3자", back: "어떤 사정을 알지 못하는 제3자. 법률상 보호 대상이 된다.", desc: "민법 제107조 제2항 등 참고" },
+        { id: "c-2", deckId: "deck-1", front: "반사회질서의 법률행위", back: "선량한 풍속 기타 사회질서에 위반한 사항을 내용으로 하는 법률행위는 무효로 한다.", desc: "민법 제103조" },
+        { id: "c-3", deckId: "deck-1", front: "허위표시", back: "상대방과 통정하여 허위로 한 의사표시. 당사자 사이에서는 언제나 무효이다.", desc: "민법 제108조" },
+        { id: "c-4", deckId: "deck-1", front: "동기의 착오", back: "의사표시를 하게 된 동기에만 착오가 있는 것. 원칙적으로 취소할 수 없다.", desc: "예외: 동기가 표시되거나 알려진 경우 취소 가능" },
+        { id: "c-5", deckId: "deck-2", front: "Drive a hard bargain", back: "유리한 조건을 쟁취하기 위해 끈질기게 협상하다.", desc: "Example: They drive a hard bargain, but we reached an agreement." },
+        { id: "c-6", deckId: "deck-2", front: "Concession", back: "(협상 과정에서의) 양보, 양보조치", desc: "Synonym: Yield, Compromise" },
+        { id: "c-7", deckId: "deck-2", front: "Null and void", back: "무효의, 법적 효력이 없는", desc: "Example: The contract will be null and void if unsigned." }
+      ]
+    };
+
+    class FlashcardApp {
+      constructor() {
+        this.folders = [];
+        this.decks = [];
+        this.cards = [];
+
+        // 현재 앱 탐색 상태 저장
+        this.currentFolderId = null;
+        this.currentDeckId = null;
+        
+        // 학습 세션 관련 상태
+        this.sessionCards = []; 
+        this.originalSessionLength = 0;
+        this.currentSessionIndex = 0;
+        this.relearnSessionMode = false; 
+        
+        // 제스처 스와이프 히스토리 추적용
+        this.historyStates = []; 
+        
+        // 각 세션 성적 통계
+        this.sessionStats = {
+          perfect: [], 
+          know: [],    
+          dontknow: [] 
+        };
+
+        // 제스처 추적 상태
+        this.touchStart = { x: 0, y: 0 };
+        this.touchMove = { x: 0, y: 0 };
+        this.isSwiping = false;
+
+        // PWA 전용 트리거 캐시 변수
+        this.deferredPrompt = null;
+
+        this.init();
+      }
+
+      init() {
+        this.loadDataFromStorage();
+        this.renderFolders();
+        this.initEventListeners();
+        this.initPWA(); // PWA 연동 구동
+        lucide.createIcons();
+      }
+
+      // ==================== PWA 연동 및 인라인 구동부 ====================
+      initPWA() {
+        // 1. 인라인 JSON Manifest를 동적 생성하여 Document Head에 주입 (단일 파일 PWA 필수 테크닉)
+        const manifest = {
+          "name": "Flashcard Master",
+          "short_name": "FlashcardMaster",
+          "start_url": ".",
+          "display": "standalone",
+          "background_color": "#ffffff",
+          "theme_color": "#4f46e5",
+          "description": "학습자 이경혜님을 위해 완벽 조율된 오프라인 학습 보관함 플래시카드 마스터",
+          "icons": [
+            {
+              "src": "https://placehold.co/192x192/4f46e5/ffffff?text=FM",
+              "sizes": "192x192",
+              "type": "image/png"
+            },
+            {
+              "src": "https://placehold.co/512x512/4f46e5/ffffff?text=FlashcardMaster",
+              "sizes": "512x512",
+              "type": "image/png"
+            }
+          ]
+        };
+
+        try {
+          const stringManifest = JSON.stringify(manifest);
+          const blob = new Blob([stringManifest], { type: 'application/manifest+json' });
+          const manifestURL = URL.createObjectURL(blob);
+          
+          const link = document.createElement('link');
+          link.rel = 'manifest';
+          link.href = manifestURL;
+          document.head.appendChild(link);
+        } catch (e) {
+          console.error("PWA Manifest dynamic injection failed: ", e);
+        }
+
+        // 2. 서비스 워커 등록 감지 시도 (독립 배포 시 즉각 연동 가능하도록 주입)
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+              .then(reg => {
+                console.log('PWA Service Worker registered successfully scope:', reg.scope);
+              })
+              .catch(err => {
+                // 단일 파일 테스트 환경이나 특수 iframe 샌드박스 내부에서는 에러를 뿜을 수 있으므로 경고 처리 후 패스
+                console.warn('PWA Service Worker registration skipped (Expected in sandboxed contexts/unhosted static file):', err.message);
+              });
+          });
+        }
+
+        // 3. 앱 설치 가용 시점 포착 및 커스텀 UI 설치 유도 연출
+        window.addEventListener('beforeinstallprompt', (e) => {
+          // 브라우저 기본 설치 유도용 인포바 강제 억제
+          e.preventDefault();
+          // 이벤트를 캐시하여 트리거 버튼과 연결
+          this.deferredPrompt = e;
+          // 상단 바의 '앱 설치' 버튼 렌더링
+          const installBtn = document.getElementById("pwa-install-btn");
+          if (installBtn) {
+            installBtn.classList.remove("hidden");
+            installBtn.classList.add("flex");
+          }
+        });
+
+        // 4. 앱 설치 완료 이벤트 감지
+        window.addEventListener('appinstalled', () => {
+          this.showToast("Flashcard Master가 스마트폰/PC 기기에 안전하게 설치되었습니다!");
+          const installBtn = document.getElementById("pwa-install-btn");
+          if (installBtn) {
+            installBtn.classList.add("hidden");
+          }
+          this.deferredPrompt = null;
+        });
+      }
+
+      // 수동 앱 설치 호출
+      triggerInstall() {
+        if (!this.deferredPrompt) {
+          this.showToast("이미 앱이 설치되어 있거나 브라우저가 아직 설치 준비 중입니다.");
+          return;
+        }
+        
+        // 대기 중인 프롬프트 팝업
+        this.deferredPrompt.prompt();
+        
+        this.deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            this.showToast("앱 설치를 수락해 주셨습니다!");
+          } else {
+            this.showToast("앱 설치가 거부되었습니다.");
+          }
+          
+          // 사용했으므로 초기화
+          const installBtn = document.getElementById("pwa-install-btn");
+          if (installBtn) installBtn.classList.add("hidden");
+          this.deferredPrompt = null;
+        });
+      }
+
+      // 오프라인용 manifest.json 및 sw.js 파일 번들 클라이언트 다운로드 지원 기능
+      downloadPWAFiles() {
+        // A. 서비스 워커 코드 구성 (최신 크롬 및 iOS 오프라인 구동 요구사항 완벽 부합)
+        const swContent = `// Flashcard Master PWA Service Worker (V1)
+const CACHE_NAME = 'flashcard-master-cache-v1';
+const ASSETS_TO_CACHE = [
+  './',
+  './index.html',
+  'https://cdn.tailwindcss.com',
+  'https://unpkg.com/lucide@latest'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('[PWA SW] Pre-caching Core Application Shell Assets');
+      return cache.addAll(ASSETS_TO_CACHE);
+    }).then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            console.log('[PWA SW] Clearing Deprecated Cache:', key);
+            return caches.delete(key);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(event.request).catch(() => {
+        console.log('[PWA SW] Offline fetch request fallback.');
+      });
+    })
+  );
+});`;
+
+        // B. manifest.json 구성
+        const manifestObj = {
+          "name": "Flashcard Master",
+          "short_name": "FlashcardMaster",
+          "start_url": "./index.html",
+          "display": "standalone",
+          "background_color": "#ffffff",
+          "theme_color": "#4f46e5",
+          "description": "학습자 이경혜님을 위해 완벽 조율된 오프라인 학습 보관함 플래시카드 마스터",
+          "icons": [
+            {
+              "src": "https://placehold.co/192x192/4f46e5/ffffff?text=FM",
+              "sizes": "192x192",
+              "type": "image/png"
+            },
+            {
+              "src": "https://placehold.co/512x512/4f46e5/ffffff?text=FlashcardMaster",
+              "sizes": "512x512",
+              "type": "image/png"
+            }
+          ]
+        };
+
+        // sw.js 다운로드 트리거
+        const blobSw = new Blob([swContent], { type: 'application/javascript;charset=utf-8;' });
+        const urlSw = URL.createObjectURL(blobSw);
+        const linkSw = document.createElement("a");
+        linkSw.href = urlSw;
+        linkSw.download = "sw.js";
+        document.body.appendChild(linkSw);
+        linkSw.click();
+        document.body.removeChild(linkSw);
+        URL.revokeObjectURL(urlSw);
+
+        // manifest.json 다운로드 트리거
+        const blobManifest = new Blob([JSON.stringify(manifestObj, null, 2)], { type: 'application/json;charset=utf-8;' });
+        const urlManifest = URL.createObjectURL(blobManifest);
+        const linkManifest = document.createElement("a");
+        linkManifest.href = urlManifest;
+        linkManifest.download = "manifest.json";
+        document.body.appendChild(linkManifest);
+        linkManifest.click();
+        document.body.removeChild(linkManifest);
+        URL.revokeObjectURL(urlManifest);
+
+        this.showToast("PWA 구성 파일(sw.js / manifest.json)이 다운로드되었습니다!");
+      }
+
+      // ==================== 데이터 및 로컬 보관함 동기화 ====================
+
+      loadDataFromStorage() {
+        const stored = localStorage.getItem("flashcard_master_data_v1");
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            this.folders = parsed.folders || [];
+            this.decks = parsed.decks || [];
+            this.cards = parsed.cards || [];
+          } catch (e) {
+            this.setSampleData();
+          }
+        } else {
+          this.setSampleData();
+        }
+      }
+
+      saveDataToStorage() {
+        const data = {
+          folders: this.folders,
+          decks: this.decks,
+          cards: this.cards
+        };
+        localStorage.setItem("flashcard_master_data_v1", JSON.stringify(data));
+        
+        // 보관함 실시간 카운트 리렌더링
+        this.renderFolders();
+      }
+
+      setSampleData() {
+        this.folders = JSON.parse(JSON.stringify(DEFAULT_DATA.folders));
+        this.decks = JSON.parse(JSON.stringify(DEFAULT_DATA.decks));
+        this.cards = JSON.parse(JSON.stringify(DEFAULT_DATA.cards));
+        this.saveDataToStorage();
+      }
+
+      resetToDefaultData() {
+        this.showConfirm("기록 초기화", "모든 데이터가 지워지고 샘플 데이터로 초기화됩니다. 계속하시겠습니까?", () => {
+          this.setSampleData();
+          this.showScreen("folder-list");
+          this.renderFolders();
+          this.showToast("기본 데이터로 초기화되었습니다.");
+        });
+      }
+
+      // 화면 전환
+      showScreen(screenId) {
+        document.querySelectorAll("main > section").forEach(sec => sec.classList.add("hidden"));
+        document.getElementById(`screen-${screenId}`).classList.remove("hidden");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        if (screenId === "folder-list") {
+          this.renderFolders();
+        }
+      }
+
+      // 폴더 렌더링
+      renderFolders() {
+        const grid = document.getElementById("folder-grid");
+        grid.innerHTML = "";
+
+        if (this.folders.length === 0) {
+          grid.innerHTML = `
+            <div class="col-span-full bg-white border border-gray-100 p-12 text-center rounded-2xl space-y-4">
+              <div class="text-gray-300 flex justify-center"><i data-lucide="folder-open" class="w-12 h-12"></i></div>
+              <p class="text-gray-500 font-medium">폴더가 없습니다.</p>
+              <button onclick="app.openNewFolderModal()" class="inline-flex items-center space-x-1.5 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>첫 폴더 생성</span>
+              </button>
+            </div>
+          `;
+          lucide.createIcons();
+          return;
+        }
+
+        this.folders.forEach(folder => {
+          const folderDecks = this.decks.filter(d => String(d.folderId) === String(folder.id));
+          const totalCards = this.cards.filter(c => folderDecks.some(fd => String(fd.id) === String(c.deckId))).length;
+
+          const card = document.createElement("div");
+          card.className = "bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-indigo-200 transition cursor-pointer flex flex-col justify-between group";
+          card.onclick = () => this.enterFolder(folder.id);
+          card.innerHTML = `
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white p-3 rounded-xl transition">
+                  <i data-lucide="folder" class="w-6 h-6"></i>
+                </div>
+                <div class="text-xs bg-gray-100 text-gray-500 font-semibold px-2.5 py-1 rounded-full">
+                  단어장 ${folderDecks.length}개
+                </div>
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-gray-900 group-hover:text-indigo-600 transition truncate">${this.escapeHTML(folder.name)}</h3>
+                <p class="text-xs text-gray-400 mt-1 line-clamp-2 h-8 leading-relaxed">${this.escapeHTML(folder.desc || '설명이 없습니다.')}</p>
+              </div>
+            </div>
+            <div class="border-t border-gray-100 mt-5 pt-4 flex justify-between items-center text-xs text-gray-400">
+              <span class="font-medium">총 ${totalCards}개 단어</span>
+              <span class="text-indigo-500 font-semibold flex items-center group-hover:translate-x-1 transition-transform">
+                폴더 열기 <i data-lucide="chevron-right" class="w-3.5 h-3.5 ml-0.5"></i>
+              </span>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+        lucide.createIcons();
+      }
+
+      // 특정 폴더로 진입
+      enterFolder(folderId) {
+        this.currentFolderId = folderId;
+        const folder = this.folders.find(f => String(f.id) === String(folderId));
+        if (!folder) return;
+
+        document.getElementById("deck-list-breadcrumb").textContent = folder.name;
+        document.getElementById("current-folder-title").textContent = folder.name;
+        document.getElementById("current-folder-desc").textContent = folder.desc || "설명이 등록되지 않았습니다.";
+
+        this.renderDecks();
+        this.showScreen("deck-list");
+      }
+
+      // 단어장 렌더링
+      renderDecks() {
+        const grid = document.getElementById("deck-grid");
+        grid.innerHTML = "";
+
+        const folderDecks = this.decks.filter(d => String(d.folderId) === String(this.currentFolderId));
+
+        if (folderDecks.length === 0) {
+          grid.innerHTML = `
+            <div class="col-span-full bg-white border border-gray-100 p-12 text-center rounded-2xl space-y-4">
+              <div class="text-gray-300 flex justify-center"><i data-lucide="book-open" class="w-12 h-12"></i></div>
+              <p class="text-gray-500 font-medium">이 폴더는 비어 있습니다.</p>
+              <button onclick="app.openNewDeckModal()" class="inline-flex items-center space-x-1.5 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>새 단어장 만들기</span>
+              </button>
+            </div>
+          `;
+          lucide.createIcons();
+          return;
+        }
+
+        folderDecks.forEach(deck => {
+          const deckCards = this.cards.filter(c => String(c.deckId) === String(deck.id));
+
+          const card = document.createElement("div");
+          card.className = "bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col justify-between";
+          card.onclick = () => this.enterDeck(deck.id);
+          card.innerHTML = `
+            <div class="space-y-4">
+              <div class="flex items-start justify-between">
+                <div>
+                  <h3 class="text-lg font-bold text-gray-800 hover:text-indigo-600 transition">${this.escapeHTML(deck.name)}</h3>
+                  <p class="text-xs text-gray-400 mt-1 line-clamp-2 h-8 leading-relaxed">${this.escapeHTML(deck.desc || '설명이 없습니다.')}</p>
+                </div>
+                <div class="bg-gray-50 p-2.5 rounded-xl border border-gray-100 flex-shrink-0 text-center min-w-[50px]">
+                  <p class="text-base font-extrabold text-indigo-600">${deckCards.length}</p>
+                  <p class="text-[9px] text-gray-400 uppercase font-semibold">CARDS</p>
+                </div>
+              </div>
+
+              <!-- 통계 정보 요약 -->
+              <div class="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-xl text-xs text-gray-500">
+                <div>
+                  <span class="block text-[10px] text-gray-400 font-medium">마지막 학습</span>
+                  <span class="font-semibold text-gray-700">${deck.lastStudied || '기록없음'}</span>
+                </div>
+                <div class="border-l border-gray-200 pl-3">
+                  <span class="block text-[10px] text-gray-400 font-medium">최근 정답률</span>
+                  <span class="font-semibold text-green-600">${deck.successRate ? deck.successRate : '학습없음'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="border-t border-gray-100 mt-5 pt-4 flex justify-end text-xs text-indigo-600 font-bold hover:underline">
+              자세히 보기 & 관리
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+        lucide.createIcons();
+      }
+
+      // 특정 단어장 상세 페이지 진입
+      enterDeck(deckId) {
+        this.currentDeckId = deckId;
+        const deck = this.decks.find(d => String(d.id) === String(deckId));
+        if (!deck) return;
+
+        const backBtn = document.getElementById("deck-detail-back-btn");
+        backBtn.onclick = () => this.enterFolder(this.currentFolderId);
+
+        document.getElementById("deck-detail-breadcrumb").textContent = deck.name;
+        document.getElementById("current-deck-title").textContent = deck.name;
+        document.getElementById("current-deck-desc").textContent = deck.desc || "설명이 등록되지 않았습니다.";
+
+        // 통계 갱신
+        const deckCards = this.cards.filter(c => String(c.deckId) === String(deckId));
+        document.getElementById("deck-card-count").textContent = `${deckCards.length}개`;
+        document.getElementById("deck-success-rate").textContent = deck.successRate || "-";
+        document.getElementById("deck-last-studied").textContent = deck.lastStudied || "기록 없음";
+
+        // 단어 목록 데이터 테이블 렌더링
+        this.renderWordsTable(deckCards);
+
+        // 학습 시작 버튼 제어
+        const startBtn = document.getElementById("start-study-btn");
+        if (deckCards.length === 0) {
+          startBtn.disabled = true;
+          startBtn.classList.add("opacity-50", "cursor-not-allowed");
+          startBtn.classList.remove("hover:bg-indigo-700");
+        } else {
+          startBtn.disabled = false;
+          startBtn.classList.remove("opacity-50", "cursor-not-allowed");
+          startBtn.classList.add("hover:bg-indigo-700");
+        }
+
+        this.showScreen("deck-detail");
+      }
+
+      // 단어 관리 테이블 렌더링
+      renderWordsTable(deckCards) {
+        const tbody = document.getElementById("words-table-body");
+        const placeholder = document.getElementById("empty-words-placeholder");
+        tbody.innerHTML = "";
+
+        if (deckCards.length === 0) {
+          placeholder.classList.remove("hidden");
+          return;
+        }
+        placeholder.classList.add("hidden");
+
+        deckCards.forEach(card => {
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-gray-50/50 transition duration-150";
+          tr.innerHTML = `
+            <td class="py-4 px-6 font-semibold text-gray-800 break-all max-w-[200px]">${this.escapeHTML(card.front)}</td>
+            <td class="py-4 px-6 text-gray-600 break-all max-w-[250px]">${this.escapeHTML(card.back)}</td>
+            <td class="py-4 px-6 text-xs text-gray-400 break-all max-w-[200px] hidden md:table-cell">${this.escapeHTML(card.desc || '-')}</td>
+            <td class="py-4 px-6 text-right space-x-1.5 flex justify-end items-center">
+              <button onclick="app.openEditWordModal('${card.id}')" class="text-gray-400 hover:text-indigo-600 p-1.5 rounded-lg hover:bg-gray-100 transition" title="단어 수정">
+                <i data-lucide="edit-2" class="w-4 h-4"></i>
+              </button>
+              <button onclick="app.deleteWordPrompt('${card.id}')" class="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition" title="단어 삭제">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+        lucide.createIcons();
+      }
+
+      escapeHTML(str) {
+        if (!str) return '';
+        return str.replace(/[&<>'"]/g, 
+          tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+        );
+      }
+
+      // ==================== 제스처 및 학습 세션 비즈니스 로직 ====================
+      startStudySession() {
+        const deckCards = this.cards.filter(c => String(c.deckId) === String(this.currentDeckId));
+        if (deckCards.length === 0) return;
+
+        this.sessionCards = this.shuffleArray([...deckCards]);
+        this.originalSessionLength = this.sessionCards.length;
+        this.currentSessionIndex = 0;
+        this.relearnSessionMode = false;
+        this.historyStates = [];
+
+        this.sessionStats = { perfect: [], know: [], dontknow: [] };
+
+        this.initStudyUI();
+        this.showScreen("study");
+      }
+
+      startRelearnSession() {
+        if (this.sessionStats.dontknow.length === 0) return;
+
+        this.sessionCards = this.shuffleArray([...this.sessionStats.dontknow]);
+        this.originalSessionLength = this.sessionCards.length;
+        this.currentSessionIndex = 0;
+        this.relearnSessionMode = true;
+        this.historyStates = [];
+
+        this.sessionStats = { perfect: [], know: [], dontknow: [] };
+
+        this.initStudyUI();
+        this.showScreen("study");
+      }
+
+      shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      }
+
+      initStudyUI() {
+        document.getElementById("failed-relearn-badge").classList.toggle("hidden", !this.relearnSessionMode);
+        this.renderActiveCard();
+      }
+
+      renderActiveCard() {
+        if (this.currentSessionIndex >= this.sessionCards.length) {
+          this.finishStudySession();
+          return;
+        }
+
+        const cardElement = document.getElementById("swipe-card");
+        cardElement.className = "card-inner w-full h-full bg-white rounded-3xl border-2 border-gray-200 shadow-xl cursor-pointer select-none";
+        cardElement.style.transform = "";
+        cardElement.style.opacity = "1"; 
+        cardElement.style.transition = ""; 
+
+        const card = this.sessionCards[this.currentSessionIndex];
+
+        document.getElementById("card-front-text").textContent = card.front;
+        document.getElementById("card-front-desc").textContent = card.desc || "";
+        document.getElementById("card-back-text").textContent = card.back;
+
+        const progressPercent = (this.currentSessionIndex / this.sessionCards.length) * 100;
+        document.getElementById("study-progress-bar").style.width = `${progressPercent}%`;
+        document.getElementById("study-progress-count").textContent = `${this.currentSessionIndex + 1}/${this.sessionCards.length}`;
+      }
+
+      flipCard() {
+        const card = document.getElementById("swipe-card");
+        card.classList.toggle("is-flipped");
+      }
+
+      swipeAction(direction) {
+        const cardElement = document.getElementById("swipe-card");
+        const card = this.sessionCards[this.currentSessionIndex];
+        
+        if (direction === 'prev') {
+          if (this.historyStates.length === 0) {
+            this.showToast("돌아갈 이전 카드가 없습니다.");
+            return;
+          }
+          
+          const lastState = this.historyStates.pop();
+          this.currentSessionIndex = lastState.cardIndex;
+          
+          this.removeFromStats(card);
+          
+          this.animateCardExit('left-to-right'); 
+          setTimeout(() => {
+            this.renderActiveCard();
+          }, 150);
+          return;
+        }
+
+        this.historyStates.push({
+          cardIndex: this.currentSessionIndex,
+          cardId: card.id
+        });
+
+        if (direction === 'perfect') {
+          this.sessionStats.perfect.push(card);
+          this.animateCardExit('up');
+        } else if (direction === 'know') {
+          this.sessionStats.know.push(card);
+          this.animateCardExit('left');
+        } else if (direction === 'dontknow') {
+          this.sessionStats.dontknow.push(card);
+          this.sessionCards.push(card);
+          this.animateCardExit('down');
+        }
+
+        setTimeout(() => {
+          this.currentSessionIndex++;
+          this.renderActiveCard();
+        }, 300);
+      }
+
+      removeFromStats(card) {
+        const filterFn = c => String(c.id) !== String(card.id);
+        this.sessionStats.perfect = this.sessionStats.perfect.filter(filterFn);
+        this.sessionStats.know = this.sessionStats.know.filter(filterFn);
+        this.sessionStats.dontknow = this.sessionStats.dontknow.filter(filterFn);
+        
+        const lastIndex = this.sessionCards.lastIndexOf(card);
+        if (lastIndex > this.currentSessionIndex) {
+          this.sessionCards.splice(lastIndex, 1);
+        }
+      }
+
+      // 카드 물리적 탈출 애니메이션 효과
+      animateCardExit(direction) {
+        const card = document.getElementById("swipe-card");
+        card.style.transition = "transform 0.3s ease-out, opacity 0.3s";
+        
+        if (direction === 'left') {
+          card.style.transform = "translateX(-150%) rotate(-20deg)";
+          card.style.opacity = "0";
+        } else if (direction === 'up') {
+          card.style.transform = "translateY(-150%) rotate(10deg)";
+          card.style.opacity = "0";
+        } else if (direction === 'down') {
+          card.style.transform = "translateY(150%) rotate(-10deg)";
+          card.style.opacity = "0";
+        } else if (direction === 'left-to-right') {
+          card.style.transform = "translateX(-120%)";
+          card.style.opacity = "0";
+          setTimeout(() => {
+            card.style.transition = "transform 0.3s ease-in, opacity 0.3s";
+            card.style.transform = "translateX(0) rotate(0)";
+            card.style.opacity = "1";
+          }, 50);
+        }
+      }
+
+      finishStudySession() {
+        const totalAnswers = this.originalSessionLength;
+        const correctAnswers = this.sessionStats.perfect.length + this.sessionStats.know.length;
+        const rate = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
+
+        const deck = this.decks.find(d => String(d.id) === String(this.currentDeckId));
+        if (deck) {
+          const now = new Date();
+          const yyyy = now.getFullYear();
+          const mm = String(now.getMonth() + 1).padStart(2, '0');
+          const dd = String(now.getDate()).padStart(2, '0');
+          deck.lastStudied = `${yyyy}-${mm}-${dd}`;
+          deck.successRate = `${rate}%`;
+          this.saveDataToStorage();
+        }
+
+        document.getElementById("result-success-rate").textContent = `${rate}%`;
+        document.getElementById("result-perfect-count").textContent = this.sessionStats.perfect.length;
+        document.getElementById("result-know-count").textContent = this.sessionStats.know.length;
+        document.getElementById("result-dontknow-count").textContent = this.sessionStats.dontknow.length;
+
+        const circle = document.getElementById("result-chart-bar");
+        const radius = 70;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (rate / 100) * circumference;
+        circle.style.strokeDasharray = `${circumference}`;
+        circle.style.strokeDashoffset = `${circumference}`;
+        
+        setTimeout(() => {
+          circle.style.strokeDashoffset = `${offset}`;
+        }, 200);
+
+        const relearnBtn = document.getElementById("result-relearn-failed-btn");
+        if (this.sessionStats.dontknow.length > 0) {
+          relearnBtn.classList.remove("hidden");
+        } else {
+          relearnBtn.classList.add("hidden");
+        }
+
+        this.showScreen("result");
+      }
+
+      goToCurrentDeck() {
+        this.enterDeck(this.currentDeckId);
+      }
+
+      quitStudySessionPrompt() {
+        this.showConfirm("학습 중단", "정말로 학습을 끝내시겠습니까? 현재까지의 기록은 저장되지 않습니다.", () => {
+          this.enterDeck(this.currentDeckId);
+        });
+      }
+
+      // ==================== 관리 수동 모달 기능 ====================
+
+      openNewFolderModal() {
+        document.getElementById("modal-folder-title").textContent = "새 폴더 만들기";
+        document.getElementById("modal-folder-id").value = "";
+        document.getElementById("modal-folder-name").value = "";
+        document.getElementById("modal-folder-desc-input").value = "";
+        this.openModal("folder");
+      }
+
+      openEditFolderModal() {
+        const folder = this.folders.find(f => String(f.id) === String(this.currentFolderId));
+        if (!folder) return;
+        document.getElementById("modal-folder-title").textContent = "폴더 수정";
+        document.getElementById("modal-folder-id").value = folder.id;
+        document.getElementById("modal-folder-name").value = folder.name;
+        document.getElementById("modal-folder-desc-input").value = folder.desc || "";
+        this.openModal("folder");
+      }
+
+      saveFolder() {
+        const id = document.getElementById("modal-folder-id").value;
+        const name = document.getElementById("modal-folder-name").value.trim();
+        const desc = document.getElementById("modal-folder-desc-input").value.trim();
+
+        if (!name) {
+          this.showToast("폴더 이름을 입력해 주세요.");
+          return;
+        }
+
+        if (id) {
+          const folder = this.folders.find(f => String(f.id) === String(id));
+          if (folder) {
+            folder.name = name;
+            folder.desc = desc;
+          }
+        } else {
+          const newFolder = {
+            id: `folder-${Date.now()}`,
+            name,
+            desc
+          };
+          this.folders.push(newFolder);
+        }
+
+        this.saveDataToStorage();
+        this.closeModal("folder");
+        this.renderFolders();
+        if (String(this.currentFolderId) === String(id) && id) {
+          this.enterFolder(id); 
+        }
+        this.showToast("폴더가 안전하게 저장되었습니다.");
+      }
+
+      deleteFolderPrompt() {
+        this.showConfirm("폴더 영구 삭제", "이 폴더를 삭제하면 폴더 내부의 모든 단어장과 저장된 통계 데이터가 함께 삭제됩니다. 정말 삭제하시겠습니까?", () => {
+          const fDecks = this.decks.filter(d => String(d.folderId) === String(this.currentFolderId));
+          this.cards = this.cards.filter(c => !fDecks.some(fd => String(fd.id) === String(c.deckId)));
+          this.decks = this.decks.filter(d => String(d.folderId) !== String(this.currentFolderId));
+          this.folders = this.folders.filter(f => String(f.id) !== String(this.currentFolderId));
+
+          this.saveDataToStorage();
+          this.showScreen("folder-list");
+          this.renderFolders();
+          this.showToast("폴더가 성공적으로 지워졌습니다.");
+        });
+      }
+
+      openNewDeckModal() {
+        document.getElementById("modal-deck-title").textContent = "새 단어장 만들기";
+        document.getElementById("modal-deck-id").value = "";
+        document.getElementById("modal-deck-name").value = "";
+        document.getElementById("modal-deck-desc-input").value = "";
+        this.openModal("deck");
+      }
+
+      openEditDeckModal() {
+        const deck = this.decks.find(d => String(d.id) === String(this.currentDeckId));
+        if (!deck) return;
+        document.getElementById("modal-deck-title").textContent = "단어장 수정";
+        document.getElementById("modal-deck-id").value = deck.id;
+        document.getElementById("modal-deck-name").value = deck.name;
+        document.getElementById("modal-deck-desc-input").value = deck.desc || "";
+        this.openModal("deck");
+      }
+
+      saveDeck() {
+        const id = document.getElementById("modal-deck-id").value;
+        const name = document.getElementById("modal-deck-name").value.trim();
+        const desc = document.getElementById("modal-deck-desc-input").value.trim();
+
+        if (!name) {
+          this.showToast("단어장 이름을 입력해 주세요.");
+          return;
+        }
+
+        if (id) {
+          const deck = this.decks.find(d => String(d.id) === String(id));
+          if (deck) {
+            deck.name = name;
+            deck.desc = desc;
+          }
+        } else {
+          const newDeck = {
+            id: `deck-${Date.now()}`,
+            folderId: this.currentFolderId,
+            name,
+            desc,
+            lastStudied: null,
+            successRate: null
+          };
+          this.decks.push(newDeck);
+        }
+
+        this.saveDataToStorage(); 
+        this.closeModal("deck");
+        this.renderDecks();
+        if (id) {
+          this.enterDeck(id);
+        }
+        this.showToast("단어장이 저장되었습니다.");
+      }
+
+      deleteDeckPrompt() {
+        this.showConfirm("단어장 삭제", "이 단어장과 내부에 속한 단어들이 모두 영구 삭제됩니다. 삭제하시겠습니까?", () => {
+          this.cards = this.cards.filter(c => String(c.deckId) !== String(this.currentDeckId));
+          this.decks = this.decks.filter(d => String(d.id) !== String(this.currentDeckId));
+          
+          this.saveDataToStorage(); 
+          this.enterFolder(this.currentFolderId);
+          this.showToast("단어장이 영구 삭제되었습니다.");
+        });
+      }
+
+      // ==================== 단어 낱개 관리 모달 ====================
+
+      openAddWordModal() {
+        document.getElementById("modal-word-title").textContent = "단어 추가";
+        document.getElementById("modal-word-id").value = "";
+        document.getElementById("modal-word-front").value = "";
+        document.getElementById("modal-word-back").value = "";
+        document.getElementById("modal-word-desc").value = "";
+        this.openModal("word");
+      }
+
+      openEditWordModal(cardId) {
+        const card = this.cards.find(c => String(c.id) === String(cardId));
+        if (!card) return;
+        document.getElementById("modal-word-title").textContent = "단어 편집";
+        document.getElementById("modal-word-id").value = card.id;
+        document.getElementById("modal-word-front").value = card.front;
+        document.getElementById("modal-word-back").value = card.back;
+        document.getElementById("modal-word-desc").value = card.desc || "";
+        this.openModal("word");
+      }
+
+      saveWord() {
+        const id = document.getElementById("modal-word-id").value;
+        const front = document.getElementById("modal-word-front").value.trim();
+        const back = document.getElementById("modal-word-back").value.trim();
+        const desc = document.getElementById("modal-word-desc").value.trim();
+
+        if (!front || !back) {
+          this.showToast("문제와 정답을 모두 입력해 주세요.");
+          return;
+        }
+
+        if (id) {
+          const card = this.cards.find(c => String(c.id) === String(id));
+          if (card) {
+            card.front = front;
+            card.back = back;
+            card.desc = desc;
+          }
+        } else {
+          const newCard = {
+            id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            deckId: this.currentDeckId,
+            front,
+            back,
+            desc
+          };
+          this.cards.push(newCard);
+        }
+
+        this.saveDataToStorage();
+        this.closeModal("word");
+        this.enterDeck(this.currentDeckId);
+        this.showToast("단어가 등록되었습니다.");
+      }
+
+      deleteWordPrompt(cardId) {
+        this.showConfirm("단어 삭제", "이 단어를 단어장에서 완전히 지우시겠습니까?", () => {
+          this.cards = this.cards.filter(c => String(c.id) !== String(cardId));
+          this.saveDataToStorage();
+          this.enterDeck(this.currentDeckId);
+          this.showToast("단어가 삭제되었습니다.");
+        });
+      }
+
+      // ==================== CSV / 엑셀 가져오기 및 템플릿 다운로드 구현 ====================
+
+      openExcelUploadModal() {
+        document.getElementById("excel-file-input").value = "";
+        document.getElementById("excel-text-import").value = "";
+        this.openModal("excel");
+      }
+
+      downloadTemplateCSV() {
+        const csvHeaders = "\ufeff문제 (앞면),정답 (뒷면),법령 또는 참고설명 (선택)\n";
+        const csvSampleRows = [
+          "선의의 제3자,어떤 사정을 알지 못하는 제3자. 법률상 보호 대상이 된다.,민법 제107조 제2항 참고",
+          "Drive a hard bargain,유리한 조건을 쟁취하기 위해 끈질기게 협상하다.,예문: They drive a hard bargain but we agreed.",
+          "의사표시,행위자가 어떤 법률효과의 발생을 원하여 외부에 표시하는 행위,용어 정의"
+        ].join("\n");
+
+        const csvContent = csvHeaders + csvSampleRows;
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "flashcard_template.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        this.showToast("표준 CSV 템플릿 파일이 다운로드되었습니다.");
+      }
+
+      processImport() {
+        const fileInput = document.getElementById("excel-file-input");
+        const textImport = document.getElementById("excel-text-import").value.trim();
+
+        if (fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const arrayBuffer = e.target.result;
+            const byteArray = new Uint8Array(arrayBuffer);
+            
+            const isUtf8 = this.checkIsUTF8(byteArray);
+            const encoding = isUtf8 ? 'utf-8' : 'euc-kr';
+            
+            const decoder = new TextDecoder(encoding);
+            const text = decoder.decode(byteArray);
+            
+            this.parseCSVAndInsert(text);
+          };
+          reader.readAsArrayBuffer(file);
+        } else if (textImport) {
+          this.parseCSVAndInsert(textImport);
+        } else {
+          this.showToast("업로드할 파일이나 붙여넣을 텍스트 데이터를 입력해 주세요.");
+        }
+      }
+
+      checkIsUTF8(bytes) {
+        let i = 0;
+        while (i < bytes.length) {
+          if (bytes[i] <= 0x7F) {
+            i += 1;
+            continue;
+          }
+          if (bytes[i] >= 0xC2 && bytes[i] <= 0xDF) {
+            if (i + 1 < bytes.length && bytes[i + 1] >= 0x80 && bytes[i + 1] <= 0xBF) {
+              i += 2;
+              continue;
+            } else {
+              return false;
+            }
+          }
+          if (bytes[i] >= 0xE0 && bytes[i] <= 0xEF) {
+            if (i + 2 < bytes.length && 
+                bytes[i + 1] >= 0x80 && bytes[i + 1] <= 0xBF && 
+                bytes[i + 2] >= 0x80 && bytes[i + 2] <= 0xBF) {
+              i += 3;
+              continue;
+            } else {
+              return false;
+            }
+          }
+          if (bytes[i] >= 0xF0 && bytes[i] <= 0xF4) {
+            if (i + 3 < bytes.length && 
+                bytes[i + 1] >= 0x80 && bytes[i + 1] <= 0xBF && 
+                bytes[i + 2] >= 0x80 && bytes[i + 2] <= 0xBF && 
+                bytes[i + 3] >= 0x80 && bytes[i + 3] <= 0xBF) {
+              i += 4;
+              continue;
+            } else {
+              return false;
+            }
+          }
+          return false;
+        }
+        return true;
+      }
+
+      parseCSVAndInsert(text) {
+        const rows = text.split(/\r?\n/);
+        let importedCount = 0;
+        let isFirstRow = true;
+
+        rows.forEach(row => {
+          if (!row.trim()) return;
+
+          let cols = [];
+          if (row.includes('\t')) {
+            cols = row.split('\t');
+          } else {
+            cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || row.split(',');
+          }
+
+          if (cols && cols.length >= 2) {
+            let front = cols[0].replace(/^"|"$/g, '').trim();
+            let back = cols[1].replace(/^"|"$/g, '').trim();
+            let desc = cols[2] ? cols[2].replace(/^"|"$/g, '').trim() : '';
+
+            if (isFirstRow && (front.includes("문제") || front.includes("FRONT") || back.includes("정답") || back.includes("BACK"))) {
+              isFirstRow = false;
+              return; 
+            }
+            isFirstRow = false;
+
+            if (front && back) {
+              const newCard = {
+                id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                deckId: this.currentDeckId,
+                front,
+                back,
+                desc
+              };
+              this.cards.push(newCard);
+              importedCount++;
+            }
+          }
+        });
+
+        if (importedCount > 0) {
+          this.saveDataToStorage();
+          this.closeModal("excel");
+          this.enterDeck(this.currentDeckId);
+          this.showToast(`${importedCount}개의 단어를 성공적으로 가져왔습니다.`);
+        } else {
+          this.showToast("가져올 수 있는 유효한 데이터 형식이 없습니다. 양식을 확인하세요.");
+        }
+      }
+
+      // ==================== 친구와 단어장 공유 코드 구현 ====================
+
+      openShareDeckModal() {
+        const deck = this.decks.find(d => String(d.id) === String(this.currentDeckId));
+        const deckCards = this.cards.filter(c => String(c.deckId) === String(this.currentDeckId));
+
+        if (!deck) return;
+
+        const payload = {
+          type: "single-deck-share",
+          deck: {
+            name: deck.name,
+            desc: deck.desc
+          },
+          cards: deckCards.map(c => ({ front: c.front, back: c.back, desc: c.desc }))
+        };
+
+        const jsonStr = JSON.stringify(payload);
+        const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
+
+        document.getElementById("share-export-code").value = encoded;
+        document.getElementById("share-copied-indicator").classList.add("opacity-0");
+        this.openModal("share");
+      }
+
+      copyShareCode() {
+        const copyText = document.getElementById("share-export-code");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        document.execCommand("copy");
+
+        const ind = document.getElementById("share-copied-indicator");
+        ind.classList.remove("opacity-0");
+        setTimeout(() => ind.classList.add("opacity-0"), 2000);
+      }
+
+      // ==================== 백업 및 복구 모달 ====================
+
+      showBackupRestoreModal() {
+        document.getElementById("backup-restore-code").value = "";
+        this.openModal("backup-restore");
+      }
+
+      exportAllData() {
+        const data = {
+          type: "full-backup",
+          folders: this.folders,
+          decks: this.decks,
+          cards: this.cards
+        };
+        const jsonStr = JSON.stringify(data);
+        const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
+
+        const target = document.getElementById("backup-restore-code");
+        target.value = encoded;
+        target.select();
+        document.execCommand("copy");
+        this.showToast("전체 데이터 백업 코드가 클립보드에 복사되었습니다.");
+      }
+
+      importBackupData() {
+        const codeInput = document.getElementById("backup-restore-code").value.trim();
+        if (!codeInput) {
+          this.showToast("복구할 코드를 먼저 입력해 주세요.");
+          return;
+        }
+
+        try {
+          const decoded = decodeURIComponent(escape(atob(codeInput)));
+          const parsed = JSON.parse(decoded);
+
+          if (parsed.type === "full-backup") {
+            this.showConfirm("전체 데이터 복구", "내 기존의 모든 학습 폴더와 카드 정보가 이 백업으로 완전히 대체됩니다. 진행하시겠습니까?", () => {
+              this.folders = parsed.folders || [];
+              this.decks = parsed.decks || [];
+              this.cards = parsed.cards || [];
+              this.saveDataToStorage();
+              this.closeModal("backup-restore");
+              this.renderFolders();
+              this.showToast("전체 데이터가 완벽히 복원되었습니다.");
+            });
+          } else if (parsed.type === "single-deck-share") {
+            if (!this.currentFolderId) {
+              this.showToast("공유 단어장을 가져올 폴더에 먼저 진입한 상태여야 합니다.");
+              return;
+            }
+
+            const newDeckId = `deck-${Date.now()}`;
+            const newDeck = {
+              id: newDeckId,
+              folderId: this.currentFolderId,
+              name: `[공유] ${parsed.deck.name}`,
+              desc: parsed.deck.desc,
+              lastStudied: null,
+              successRate: null
+            };
+
+            const newCards = parsed.cards.map(c => ({
+              id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+              deckId: newDeckId,
+              front: c.front,
+              back: c.back,
+              desc: c.desc
+            }));
+
+            this.decks.push(newDeck);
+            this.cards.push(...newCards);
+            this.saveDataToStorage();
+            this.closeModal("backup-restore");
+            this.renderDecks();
+            this.showToast("공유 단어장을 이 폴더에 성공적으로 가져왔습니다.");
+          } else {
+            this.showToast("올바른 백업 및 공유 코드가 아닙니다.");
+          }
+        } catch (e) {
+          this.showToast("코드 해석에 실패했습니다. 코드가 온전한지 확인해 주세요.");
+        }
+      }
+
+      // ==================== 제스처 핸들러 (PC 마우스 스와이프 & 터치스크린 완벽 튜닝) ====================
+      initEventListeners() {
+        const cardContainer = document.getElementById("swipe-card");
+
+        cardContainer.addEventListener("click", (e) => {
+          if (this.isSwiping) return;
+          this.flipCard();
+        });
+
+        cardContainer.addEventListener("touchstart", (e) => this.handleDragStart(e.touches[0].clientX, e.touches[0].clientY));
+        cardContainer.addEventListener("touchmove", (e) => {
+          if (!this.touchStart.x) return;
+          this.handleDragMove(e.touches[0].clientX, e.touches[0].clientY);
+          e.preventDefault(); 
+        }, { passive: false });
+        cardContainer.addEventListener("touchend", () => this.handleDragEnd());
+
+        cardContainer.addEventListener("mousedown", (e) => {
+          this.handleDragStart(e.clientX, e.clientY);
+          
+          const handleMouseMove = (me) => this.handleDragMove(me.clientX, me.clientY);
+          const handleMouseUp = () => {
+            this.handleDragEnd();
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+          };
+
+          window.addEventListener("mousemove", handleMouseMove);
+          window.addEventListener("mouseup", handleMouseUp);
+        });
+
+        window.addEventListener("keydown", (e) => {
+          const studyScreen = document.getElementById("screen-study");
+          if (studyScreen.classList.contains("hidden")) return;
+
+          if (e.code === "Space") {
+            e.preventDefault();
+            this.flipCard();
+          } else if (e.code === "ArrowLeft") {
+            this.swipeAction('know');
+          } else if (e.code === "ArrowRight") {
+            this.swipeAction('prev');
+          } else if (e.code === "ArrowUp") {
+            this.swipeAction('perfect');
+          } else if (e.code === "ArrowDown") {
+            this.swipeAction('dontknow');
+          }
+        });
+      }
+
+      handleDragStart(clientX, clientY) {
+        this.touchStart.x = clientX;
+        this.touchStart.y = clientY;
+        this.isSwiping = false;
+
+        const card = document.getElementById("swipe-card");
+        card.style.transition = "none";
+      }
+
+      handleDragMove(clientX, clientY) {
+        if (!this.touchStart.x) return;
+
+        this.touchMove.x = clientX;
+        this.touchMove.y = clientY;
+
+        const deltaX = this.touchMove.x - this.touchStart.x;
+        const deltaY = this.touchMove.y - this.touchStart.y;
+
+        if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+          this.isSwiping = true;
+        }
+
+        const card = document.getElementById("swipe-card");
+        
+        const rotate = deltaX * 0.08;
+        card.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${rotate}deg)`;
+
+        this.updateGestureIndicators(deltaX, deltaY);
+      }
+
+      handleDragEnd() {
+        if (!this.isSwiping) {
+          this.touchStart = { x: 0, y: 0 };
+          return;
+        }
+
+        const deltaX = this.touchMove.x - this.touchStart.x;
+        const deltaY = this.touchMove.y - this.touchStart.y;
+        const threshold = 120; 
+
+        this.resetGestureIndicators();
+
+        if (deltaX < -threshold) {
+          this.swipeAction('know');
+        } else if (deltaX > threshold) {
+          this.swipeAction('prev');
+        } else if (deltaY < -threshold) {
+          this.swipeAction('perfect');
+        } else if (deltaY > threshold) {
+          this.swipeAction('dontknow');
+        } else {
+          const card = document.getElementById("swipe-card");
+          card.style.transition = "transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
+          card.style.transform = "translate3d(0,0,0) rotate(0deg)";
+        }
+
+        this.touchStart = { x: 0, y: 0 };
+        this.isSwiping = false;
+      }
+
+      // 상호작용 피드백 표시기 렌더링 함수
+      updateGestureIndicators(deltaX, deltaY) {
+        const threshold = 60;
+        const indKnow = document.getElementById("indicator-know");
+        const indPerfect = document.getElementById("indicator-perfect");
+        const indDontKnow = document.getElementById("indicator-dontknow");
+        const indPrev = document.getElementById("indicator-prev");
+
+        indKnow.style.opacity = "0";
+        indPerfect.style.opacity = "0";
+        indDontKnow.style.opacity = "0";
+        indPrev.style.opacity = "0";
+
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          if (deltaX < -threshold) {
+            indKnow.style.opacity = "0.9";
+            indKnow.style.transform = `translate3d(${deltaX + 130}px, ${deltaY}px, 0) scale(1.1)`;
+          } else if (deltaX > threshold) {
+            indPrev.style.opacity = "0.9";
+            indPrev.style.transform = `translate3d(${deltaX - 130}px, ${deltaY}px, 0) scale(1.1)`;
+          }
+        } else {
+          if (deltaY < -threshold) {
+            indPerfect.style.opacity = "0.9";
+            indPerfect.style.transform = `translate3d(${deltaX}px, ${deltaY + 130}px, 0) scale(1.1)`;
+          } else if (deltaY > threshold) {
+            indDontKnow.style.opacity = "0.9";
+            indDontKnow.style.transform = `translate3d(${deltaX}px, ${deltaY - 130}px, 0) scale(1.1)`;
+          }
+        }
+      }
+
+      resetGestureIndicators() {
+        const indicators = ["indicator-know", "indicator-perfect", "indicator-dontknow", "indicator-prev"];
+        indicators.forEach(id => {
+          const el = document.getElementById(id);
+          el.style.opacity = "0";
+        });
+      }
+
+      // ==================== 알림 및 모달 컴포넌트 유틸리티 ====================
+
+      openModal(modalType) {
+        document.getElementById(`modal-${modalType}`).classList.remove("hidden");
+      }
+
+      closeModal(modalType) {
+        document.getElementById(`modal-${modalType}`).classList.add("hidden");
+      }
+
+      showToast(message) {
+        const toast = document.getElementById("toast");
+        document.getElementById("toast-message").textContent = message;
+        
+        toast.className = "fixed bottom-6 right-6 z-50 transform translate-y-0 opacity-100 transition-all duration-300 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 text-sm";
+        setTimeout(() => {
+          toast.className = "fixed bottom-6 right-6 z-50 transform translate-y-10 opacity-0 pointer-events-none transition-all duration-300 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 text-sm";
+        }, 2500);
+      }
+
+      showConfirm(title, desc, callback) {
+        const modal = document.getElementById("confirm-modal");
+        document.getElementById("confirm-title").textContent = title;
+        document.getElementById("confirm-desc").textContent = desc;
+        modal.classList.remove("hidden");
+
+        const cancelBtn = document.getElementById("confirm-cancel-btn");
+        const okBtn = document.getElementById("confirm-ok-btn");
+
+        const cleanup = () => {
+          modal.classList.add("hidden");
+        };
+
+        cancelBtn.onclick = () => {
+          cleanup();
+        };
+
+        okBtn.onclick = () => {
+          cleanup();
+          callback();
+        };
+      }
+    }
+
+    // 전역 변수 앱 초기화
+    let app;
+    window.onload = function() {
+      app = new FlashcardApp();
+    };
+  </script>
+</body>
+</html>
