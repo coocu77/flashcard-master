@@ -303,7 +303,7 @@
       <!-- 메인 스와이프 인터페이스 컨테이너 -->
       <div class="relative w-full max-w-lg mx-auto h-[400px] flex items-center justify-center card-container mt-4">
         
-        <!-- 제스처 피드백 레이블 (카드 위에 오버레이) -->
+        <!-- 제스처 피드백 레이블 -->
         <div id="indicator-know" class="gesture-indicator absolute z-30 opacity-0 bg-blue-500 text-white text-lg font-bold px-6 py-3 rounded-full shadow-lg pointer-events-none transform -translate-x-12 scale-90">
           안다 (Next)
         </div>
@@ -352,7 +352,7 @@
         </div>
       </div>
 
-      <!-- 보조 조작 버튼 영역 (터치 미지원 기기 또는 클릭 중심의 제어 대응) -->
+      <!-- 보조 조작 버튼 영역 -->
       <div class="flex flex-col items-center space-y-4 max-w-lg mx-auto">
         <div class="grid grid-cols-4 gap-2 w-full">
           <button onclick="app.swipeAction('prev')" class="flex flex-col items-center justify-center p-3 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition text-gray-600">
@@ -447,9 +447,9 @@
 
   <!-- ==================== 모달창 모음 ==================== -->
 
-  <!-- 1. 새 폴더 / 폴더 편집 모달 -->
+  <!-- 1. 새 폴더 / 폴더 편집 모달 (모바일 스크롤 완벽 지원) -->
   <div id="modal-folder" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-100 pb-3">
         <h3 id="modal-folder-title" class="text-lg font-bold">폴더 만들기</h3>
         <button onclick="app.closeModal('folder')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
@@ -465,16 +465,16 @@
           <textarea id="modal-folder-desc-input" rows="3" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder="이 폴더에 담을 주제들을 메모하세요."></textarea>
         </div>
       </div>
-      <div class="flex justify-end space-x-2 pt-2">
+      <div class="flex justify-end space-x-2 pt-2 border-t border-gray-100">
         <button onclick="app.closeModal('folder')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
         <button onclick="app.saveFolder()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition">저장</button>
       </div>
     </div>
   </div>
 
-  <!-- 2. 새 단어장 / 단어장 편집 모달 -->
+  <!-- 2. 새 단어장 / 단어장 편집 모달 (모바일 스크롤 완벽 지원) -->
   <div id="modal-deck" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-100 pb-3">
         <h3 id="modal-deck-title" class="text-lg font-bold">단어장 만들기</h3>
         <button onclick="app.closeModal('deck')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
@@ -490,16 +490,16 @@
           <textarea id="modal-deck-desc-input" rows="3" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder="이 단어장에서 다루는 범위를 메모하세요."></textarea>
         </div>
       </div>
-      <div class="flex justify-end space-x-2 pt-2">
+      <div class="flex justify-end space-x-2 pt-2 border-t border-gray-100">
         <button onclick="app.closeModal('deck')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
         <button onclick="app.saveDeck()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition">저장</button>
       </div>
     </div>
   </div>
 
-  <!-- 3. 단어 추가 / 편집 모달 -->
+  <!-- 3. 단어 추가 / 편집 모달 (모바일 스크롤 완벽 지원) -->
   <div id="modal-word" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-100 pb-3">
         <h3 id="modal-word-title" class="text-lg font-bold">단어 등록</h3>
         <button onclick="app.closeModal('word')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
@@ -519,59 +519,63 @@
           <textarea id="modal-word-desc" rows="2" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder="관련 법령 혹은 참고할 예문을 남겨주세요"></textarea>
         </div>
       </div>
-      <div class="flex justify-end space-x-2 pt-2">
+      <div class="flex justify-end space-x-2 pt-2 border-t border-gray-100">
         <button onclick="app.closeModal('word')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
         <button onclick="app.saveWord()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition">등록</button>
       </div>
     </div>
   </div>
 
-  <!-- 4. 엑셀/CSV 업로드 모달 -->
+  <!-- 4. 엑셀/CSV 업로드 모달 (오버플로우 및 내부 스크롤 완벽 패치) -->
   <div id="modal-excel" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4">
-      <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+    <div class="bg-white w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+      <!-- 고정 헤더 -->
+      <div class="flex justify-between items-center border-b border-gray-100 pb-3 flex-shrink-0">
         <h3 class="text-lg font-bold">엑셀/CSV 업로드 및 양식 다운로드</h3>
         <button onclick="app.closeModal('excel')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
       </div>
       
-      <div class="bg-indigo-50 p-5 rounded-2xl text-xs text-indigo-900 leading-relaxed space-y-3 border border-indigo-100">
-        <div class="flex items-center justify-between">
-          <p class="font-bold text-sm text-indigo-950">업로드 및 작성 가이드</p>
-          <button onclick="app.downloadTemplateCSV()" class="flex items-center space-x-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold shadow-sm transition">
-            <i data-lucide="download" class="w-3.5 h-3.5"></i>
-            <span>엑셀 양식 다운로드</span>
-          </button>
+      <!-- 내부 스크롤형 바디 -->
+      <div class="space-y-4 overflow-y-auto flex-grow pr-1">
+        <div class="bg-indigo-50 p-5 rounded-2xl text-xs text-indigo-900 leading-relaxed space-y-3 border border-indigo-100">
+          <div class="flex items-center justify-between">
+            <p class="font-bold text-sm text-indigo-950">업로드 및 작성 가이드</p>
+            <button onclick="app.downloadTemplateCSV()" class="flex items-center space-x-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold shadow-sm transition">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>양식 다운로드</span>
+            </button>
+          </div>
+          <p>1. 위 **[양식 다운로드]** 버튼을 눌러 기본 CSV 파일을 다운받으세요.</p>
+          <p>2. 엑셀 혹은 스프레드시트로 작성 후, **CSV(쉼표로 구분)** 파일로 저장하세요.</p>
+          <p>3. 열은 반드시 다음 3가지 컬럼 순서를 준수해야 합니다.</p>
+          <p class="bg-white/90 p-2 rounded-lg font-mono border border-indigo-100 text-indigo-950 font-medium">문제(앞면), 정답(뒷면), 법령/참고설명(선택)</p>
+          <p class="text-indigo-600">※ 엑셀 한글 깨짐 방지 파서가 내장되어 있어 인코딩 설정 관계 없이 한글이 깨지지 않고 완벽 업로드됩니다.</p>
         </div>
-        <p>1. 위 **[엑셀 양식 다운로드]** 버튼을 눌러 기본 포맷을 확보하세요.</p>
-        <p>2. 엑셀이나 메모장 등으로 다운로드한 파일(.csv)을 열어 내용을 알맞게 채워 넣으세요.</p>
-        <p>3. 열 구성은 반드시 왼쪽부터 다음 순서와 일치해야 합니다.</p>
-        <p class="bg-white/90 p-2 rounded-lg font-mono border border-indigo-100 text-indigo-950 font-medium">문제(앞면), 정답(뒷면), 법령 또는 참고설명(선택)</p>
-        <p class="text-indigo-600">※ 엑셀 인코딩 자동 교정 기능이 추가되어 일반 엑셀에서 바로 수정한 뒤 저장하여 올려도 한글이 깨지지 않습니다.</p>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">CSV 파일 선택</label>
+            <input type="file" id="excel-file-input" accept=".csv,text/csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-dashed border-gray-300 p-3 rounded-xl" />
+          </div>
+          
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">직접 복사해 붙여넣기 (선택사항)</label>
+            <textarea id="excel-text-import" rows="4" class="w-full text-xs font-mono p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder="예시:&#13;선의의 제3자	어떤 사정을 알지 못하는 제3자	민법 제107조&#13;반사회질서 행위	선량한 풍속에 반하는 행위	민법 제103조"></textarea>
+          </div>
+        </div>
       </div>
 
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold text-gray-500 mb-1">CSV 파일 업로드</label>
-          <input type="file" id="excel-file-input" accept=".csv,text/csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-dashed border-gray-300 p-4 rounded-xl" />
-        </div>
-        
-        <!-- 직접 붙여넣기 기능 -->
-        <div>
-          <label class="block text-xs font-semibold text-gray-500 mb-1">혹은 엑셀 데이터 직접 복사해서 붙여넣기 (탭/쉼표 구분)</label>
-          <textarea id="excel-text-import" rows="4" class="w-full text-xs font-mono p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="예시:&#13;선의의 제3자	어떤 사정을 알지 못하는 제3자	민법 제107조&#13;반사회질서 행위	선량한 풍속에 반하는 행위	민법 제103조"></textarea>
-        </div>
-      </div>
-
-      <div class="flex justify-end space-x-2 pt-2">
-        <button onclick="app.closeModal('excel')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
-        <button onclick="app.processImport()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition">업로드 적용</button>
+      <!-- 고정 하단 풋터 영역 (어느 해상도에서나 버튼 노출 보장) -->
+      <div class="flex justify-end space-x-2 pt-3 border-t border-gray-100 flex-shrink-0">
+        <button onclick="app.closeModal('excel')" class="px-4 py-2.5 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
+        <button onclick="app.processImport()" class="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-sm">업로드 적용</button>
       </div>
     </div>
   </div>
 
   <!-- 5. 공유하기 모달 -->
   <div id="modal-share" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-100 pb-3">
         <h3 class="text-lg font-bold">친구와 단어장 공유</h3>
         <button onclick="app.closeModal('share')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
@@ -583,7 +587,7 @@
         <textarea id="share-export-code" readonly rows="6" class="w-full text-xs font-mono p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-0 outline-none resize-none"></textarea>
       </div>
 
-      <div class="flex justify-between items-center pt-2">
+      <div class="flex justify-between items-center pt-2 border-t border-gray-100 mt-4">
         <span id="share-copied-indicator" class="text-xs text-green-600 font-semibold opacity-0 transition-opacity">복사되었습니다!</span>
         <div class="flex space-x-2">
           <button onclick="app.closeModal('share')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">닫기</button>
@@ -593,7 +597,7 @@
     </div>
   </div>
 
-  <!-- 6. 백업 및 복원 통합 관리 모달 (PWA 다운로드 기능 포함) -->
+  <!-- 6. 백업 및 복원 통합 관리 모달 -->
   <div id="modal-backup-restore" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-100 pb-3">
@@ -746,13 +750,12 @@
         this.loadDataFromStorage();
         this.renderFolders();
         this.initEventListeners();
-        this.initPWA(); // PWA 연동 구동
+        this.initPWA(); 
         lucide.createIcons();
       }
 
       // ==================== PWA 연동 및 인라인 구동부 ====================
       initPWA() {
-        // 1. 인라인 JSON Manifest를 동적 생성하여 Document Head에 주입 (단일 파일 PWA 필수 테크닉)
         const manifest = {
           "name": "Flashcard Master",
           "short_name": "FlashcardMaster",
@@ -788,7 +791,6 @@
           console.error("PWA Manifest dynamic injection failed: ", e);
         }
 
-        // 2. 서비스 워커 등록 감지 시도 (독립 배포 시 즉각 연동 가능하도록 주입)
         if ('serviceWorker' in navigator) {
           window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
@@ -796,19 +798,14 @@
                 console.log('PWA Service Worker registered successfully scope:', reg.scope);
               })
               .catch(err => {
-                // 단일 파일 테스트 환경이나 특수 iframe 샌드박스 내부에서는 에러를 뿜을 수 있으므로 경고 처리 후 패스
                 console.warn('PWA Service Worker registration skipped (Expected in sandboxed contexts/unhosted static file):', err.message);
               });
           });
         }
 
-        // 3. 앱 설치 가용 시점 포착 및 커스텀 UI 설치 유도 연출
         window.addEventListener('beforeinstallprompt', (e) => {
-          // 브라우저 기본 설치 유도용 인포바 강제 억제
           e.preventDefault();
-          // 이벤트를 캐시하여 트리거 버튼과 연결
           this.deferredPrompt = e;
-          // 상단 바의 '앱 설치' 버튼 렌더링
           const installBtn = document.getElementById("pwa-install-btn");
           if (installBtn) {
             installBtn.classList.remove("hidden");
@@ -816,7 +813,6 @@
           }
         });
 
-        // 4. 앱 설치 완료 이벤트 감지
         window.addEventListener('appinstalled', () => {
           this.showToast("Flashcard Master가 스마트폰/PC 기기에 안전하게 설치되었습니다!");
           const installBtn = document.getElementById("pwa-install-btn");
@@ -827,14 +823,12 @@
         });
       }
 
-      // 수동 앱 설치 호출
       triggerInstall() {
         if (!this.deferredPrompt) {
           this.showToast("이미 앱이 설치되어 있거나 브라우저가 아직 설치 준비 중입니다.");
           return;
         }
         
-        // 대기 중인 프롬프트 팝업
         this.deferredPrompt.prompt();
         
         this.deferredPrompt.userChoice.then((choiceResult) => {
@@ -844,16 +838,13 @@
             this.showToast("앱 설치가 거부되었습니다.");
           }
           
-          // 사용했으므로 초기화
           const installBtn = document.getElementById("pwa-install-btn");
           if (installBtn) installBtn.classList.add("hidden");
           this.deferredPrompt = null;
         });
       }
 
-      // 오프라인용 manifest.json 및 sw.js 파일 번들 클라이언트 다운로드 지원 기능
       downloadPWAFiles() {
-        // A. 서비스 워커 코드 구성 (최신 크롬 및 iOS 오프라인 구동 요구사항 완벽 부합)
         const swContent = `// Flashcard Master PWA Service Worker (V1)
 const CACHE_NAME = 'flashcard-master-cache-v1';
 const ASSETS_TO_CACHE = [
@@ -900,7 +891,6 @@ self.addEventListener('fetch', (event) => {
   );
 });`;
 
-        // B. manifest.json 구성
         const manifestObj = {
           "name": "Flashcard Master",
           "short_name": "FlashcardMaster",
@@ -923,7 +913,6 @@ self.addEventListener('fetch', (event) => {
           ]
         };
 
-        // sw.js 다운로드 트리거
         const blobSw = new Blob([swContent], { type: 'application/javascript;charset=utf-8;' });
         const urlSw = URL.createObjectURL(blobSw);
         const linkSw = document.createElement("a");
@@ -934,7 +923,6 @@ self.addEventListener('fetch', (event) => {
         document.body.removeChild(linkSw);
         URL.revokeObjectURL(urlSw);
 
-        // manifest.json 다운로드 트리거
         const blobManifest = new Blob([JSON.stringify(manifestObj, null, 2)], { type: 'application/json;charset=utf-8;' });
         const urlManifest = URL.createObjectURL(blobManifest);
         const linkManifest = document.createElement("a");
@@ -973,8 +961,6 @@ self.addEventListener('fetch', (event) => {
           cards: this.cards
         };
         localStorage.setItem("flashcard_master_data_v1", JSON.stringify(data));
-        
-        // 보관함 실시간 카운트 리렌더링
         this.renderFolders();
       }
 
@@ -994,7 +980,6 @@ self.addEventListener('fetch', (event) => {
         });
       }
 
-      // 화면 전환
       showScreen(screenId) {
         document.querySelectorAll("main > section").forEach(sec => sec.classList.add("hidden"));
         document.getElementById(`screen-${screenId}`).classList.remove("hidden");
@@ -1005,7 +990,6 @@ self.addEventListener('fetch', (event) => {
         }
       }
 
-      // 폴더 렌더링
       renderFolders() {
         const grid = document.getElementById("folder-grid");
         grid.innerHTML = "";
@@ -1059,7 +1043,6 @@ self.addEventListener('fetch', (event) => {
         lucide.createIcons();
       }
 
-      // 특정 폴더로 진입
       enterFolder(folderId) {
         this.currentFolderId = folderId;
         const folder = this.folders.find(f => String(f.id) === String(folderId));
@@ -1073,7 +1056,6 @@ self.addEventListener('fetch', (event) => {
         this.showScreen("deck-list");
       }
 
-      // 단어장 렌더링
       renderDecks() {
         const grid = document.getElementById("deck-grid");
         grid.innerHTML = "";
@@ -1136,7 +1118,6 @@ self.addEventListener('fetch', (event) => {
         lucide.createIcons();
       }
 
-      // 특정 단어장 상세 페이지 진입
       enterDeck(deckId) {
         this.currentDeckId = deckId;
         const deck = this.decks.find(d => String(d.id) === String(deckId));
@@ -1173,7 +1154,6 @@ self.addEventListener('fetch', (event) => {
         this.showScreen("deck-detail");
       }
 
-      // 단어 관리 테이블 렌더링
       renderWordsTable(deckCards) {
         const tbody = document.getElementById("words-table-body");
         const placeholder = document.getElementById("empty-words-placeholder");
@@ -1343,7 +1323,6 @@ self.addEventListener('fetch', (event) => {
         }
       }
 
-      // 카드 물리적 탈출 애니메이션 효과
       animateCardExit(direction) {
         const card = document.getElementById("swipe-card");
         card.style.transition = "transform 0.3s ease-out, opacity 0.3s";
@@ -1999,7 +1978,6 @@ self.addEventListener('fetch', (event) => {
         this.isSwiping = false;
       }
 
-      // 상호작용 피드백 표시기 렌더링 함수
       updateGestureIndicators(deltaX, deltaY) {
         const threshold = 60;
         const indKnow = document.getElementById("indicator-know");
