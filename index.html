@@ -56,9 +56,59 @@
       transition: opacity 0.2s ease, transform 0.2s ease;
       pointer-events: none;
     }
+    /* PIN 번호 입력 동그라미 애니메이션 */
+    .pin-dot {
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+    .pin-dot.active {
+      background-color: #4f46e5;
+      transform: scale(1.2);
+    }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
+
+  <!-- ==================== [신규] 프리미엄 앱 비밀번호 잠금 화면 ==================== -->
+  <div id="app-lock-screen" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center hidden">
+    <div class="max-w-xs w-full flex flex-col items-center space-y-8 px-4">
+      <div class="flex flex-col items-center space-y-3">
+        <div class="bg-indigo-50 text-indigo-600 p-4 rounded-full ring-4 ring-indigo-100">
+          <i data-lucide="lock" class="w-8 h-8"></i>
+        </div>
+        <h2 class="text-xl font-bold text-gray-900 mt-2">안전 잠금 상태</h2>
+        <p class="text-xs text-gray-400 text-center">이경혜님의 단어장을 보호 중입니다.<br>PIN 비밀번호 4자리를 입력해 주세요.</p>
+      </div>
+
+      <!-- 비밀번호 표시 인디케이터 (동그라미 4개) -->
+      <div class="flex space-x-4 justify-center py-2">
+        <div id="pin-0" class="pin-dot w-3.5 h-3.5 rounded-full bg-gray-200"></div>
+        <div id="pin-1" class="pin-dot w-3.5 h-3.5 rounded-full bg-gray-200"></div>
+        <div id="pin-2" class="pin-dot w-3.5 h-3.5 rounded-full bg-gray-200"></div>
+        <div id="pin-3" class="pin-dot w-3.5 h-3.5 rounded-full bg-gray-200"></div>
+      </div>
+
+      <!-- 잠금해제 실패 경고 문구 -->
+      <p id="lock-error-msg" class="text-xs text-red-500 font-medium h-4 opacity-0 transition-opacity">비밀번호가 일치하지 않습니다.</p>
+
+      <!-- 가상 키패드 구조 -->
+      <div class="grid grid-cols-3 gap-4 w-full max-w-[260px] pt-4">
+        <button onclick="app.pressKey('1')" class="h-14 w-14 rounded-full bg-gray-50 hover:bg-gray-100 text-lg font-bold text-gray-800 flex items-center justify-center transition active:scale-95">1</button>
+        <button onclick="app.pressKey('2')" class="h-14 w-14 rounded-full bg-gray-50 hover:bg-gray-100 text-lg font-bold text-gray-800 flex items-center justify-center transition active:scale-95">2</button>
+        <button onclick="app.pressKey('3')" class="h-14 w-14 rounded-full bg-gray-50 hover:bg-gray-100 text-lg font-bold text-gray-800 flex items-center justify-center transition active:scale-95">3</button>
+        <button onclick="app.pressKey('4')" class="h-14 w-14 rounded-full bg-gray-50 hover:bg-gray-100 text-lg font-bold text-gray-800 flex items-center justify-center transition active:scale-95">4</button>
+        <button onclick="app.pressKey('5')" class="h-14 w-14 rounded-full bg-gray-50 hover:bg-gray-100 text-lg font-bold text-gray-800 flex items-center justify-center transition active:scale-95">5</button>
+        <button onclick="app.pressKey('6')" class="h-14 w-14 rounded-full bg-gray-50 hover:bg-gray-100 text-lg font-bold text-gray-800 flex items-center justify-center transition active:scale-95">6</button>
+        <button onclick="app.pressKey('7')" class="h-14 w-14 rounded-full bg-gray-50 hover:bg-gray-100 text-lg font-bold text-gray-800 flex items-center justify-center transition active:scale-95">7</button>
+        <button onclick="app.pressKey('8')" class="h-14 w-14 rounded-full bg-gray-50 hover:bg-gray-100 text-lg font-bold text-gray-800 flex items-center justify-center transition active:scale-95">8</button>
+        <button onclick="app.pressKey('9')" class="h-14 w-14 rounded-full bg-gray-50 hover:bg-gray-100 text-lg font-bold text-gray-800 flex items-center justify-center transition active:scale-95">9</button>
+        <button onclick="app.pressKey('clear')" class="h-14 w-14 text-sm font-semibold text-gray-400 flex items-center justify-center hover:text-gray-600 transition">전체삭제</button>
+        <button onclick="app.pressKey('0')" class="h-14 w-14 rounded-full bg-gray-50 hover:bg-gray-100 text-lg font-bold text-gray-800 flex items-center justify-center transition active:scale-95">0</button>
+        <button onclick="app.pressKey('back')" class="h-14 w-14 flex items-center justify-center text-gray-400 hover:text-gray-600 transition active:scale-95">
+          <i data-lucide="delete" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- 상단 네비게이션 및 PWA 설치 간편 트리거 영역 -->
   <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
@@ -69,7 +119,7 @@
         </div>
         <span class="font-bold text-xl tracking-tight flex items-baseline">
           <span>Flashcard <span class="text-indigo-600">Master</span></span>
-          <span class="text-xs text-gray-400 font-normal ml-2 whitespace-nowrap">by 경혜, 승연</span>
+          <span class="text-xs text-gray-400 font-normal ml-2 whitespace-nowrap">by 경혜, 승연 </span>
         </span>
       </div>
       
@@ -80,8 +130,9 @@
           <span>앱 설치</span>
         </button>
         
-        <button onclick="app.showBackupRestoreModal()" class="p-2 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition" title="데이터 백업, 복구 및 PWA">
-          <i data-lucide="database" class="w-5 h-5"></i>
+        <!-- 통합 설정 및 보안 센터 아이콘 -->
+        <button onclick="app.openSettingsModal()" class="p-2 text-gray-500 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition" title="통합 설정 및 보안 잠금 관리">
+          <i data-lucide="settings" class="w-5 h-5"></i>
         </button>
         <button onclick="app.resetToDefaultData()" class="p-2 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50 transition" title="초기 샘플 데이터 재설정">
           <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
@@ -114,7 +165,7 @@
       </div>
     </section>
 
-    <!-- 2. 단어장 목록 및 편집 화면 (특정 폴더 진입시) -->
+    <!-- 2. 단어장 목록 및 편집 화면 -->
     <section id="screen-deck-list" class="hidden space-y-6">
       <div class="flex items-center space-x-2 text-gray-500 text-sm">
         <button onclick="app.showScreen('folder-list')" class="hover:text-indigo-600 transition flex items-center">
@@ -163,7 +214,7 @@
       </div>
 
       <div class="bg-white p-6 rounded-2xl border border-gray-200 space-y-4">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
             <div class="flex items-center space-x-2">
               <h2 id="current-deck-title" class="text-2xl font-bold text-gray-900">단어장 제목</h2>
@@ -173,7 +224,18 @@
             </div>
             <p id="current-deck-desc" class="text-gray-500 text-sm mt-1">단어장 설명</p>
           </div>
-          <div class="flex flex-wrap gap-2">
+          
+          <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+            <!-- 학습 카드 정렬 설정기 -->
+            <div class="flex items-center bg-gray-100 border border-gray-200 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700">
+              <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 mr-1.5 text-indigo-600"></i>
+              <span class="mr-1">순서:</span>
+              <select id="study-order-select" class="bg-transparent font-bold text-gray-900 focus:outline-none cursor-pointer">
+                <option value="random">무작위 (랜덤)</option>
+                <option value="sequential">등록 순서대로</option>
+              </select>
+            </div>
+
             <button onclick="app.startStudySession()" id="start-study-btn" class="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-semibold shadow-sm transition">
               <i data-lucide="play" class="w-5 h-5 fill-current"></i>
               <span>학습 시작</span>
@@ -288,15 +350,15 @@
       <div class="grid grid-cols-3 gap-2 text-center text-xs text-gray-400 max-w-lg mx-auto">
         <div class="bg-white border border-gray-100 p-2 rounded-xl flex flex-col items-center justify-center">
           <i data-lucide="arrow-left" class="w-4 h-4 text-blue-500 mb-0.5"></i>
-          <span>← 밀기: 안다</span>
+          <span>←  안다</span>
         </div>
         <div class="bg-white border border-gray-100 p-2 rounded-xl flex flex-col items-center justify-center">
           <i data-lucide="arrow-up" class="w-4 h-4 text-indigo-500 mb-0.5"></i>
-          <span>↑ 밀기: 확실히 안다</span>
+          <span>↑  확실히 안다</span>
         </div>
         <div class="bg-white border border-gray-100 p-2 rounded-xl flex flex-col items-center justify-center">
           <i data-lucide="arrow-down" class="w-4 h-4 text-orange-500 mb-0.5"></i>
-          <span>↓ 밀기: 모른다</span>
+          <span>↓  모른다</span>
         </div>
       </div>
 
@@ -565,7 +627,7 @@
         </div>
       </div>
 
-      <!-- 고정 하단 풋터 영역 (어느 해상도에서나 버튼 노출 보장) -->
+      <!-- 고정 하단 풋터 영역 -->
       <div class="flex justify-end space-x-2 pt-3 border-t border-gray-100 flex-shrink-0">
         <button onclick="app.closeModal('excel')" class="px-4 py-2.5 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
         <button onclick="app.processImport()" class="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-sm">업로드 적용</button>
@@ -597,47 +659,101 @@
     </div>
   </div>
 
-  <!-- 6. 백업 및 복원 통합 관리 모달 -->
-  <div id="modal-backup-restore" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b border-gray-100 pb-3">
-        <h3 class="text-lg font-bold">전체 데이터 백업 / 복원</h3>
-        <button onclick="app.closeModal('backup-restore')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+  <!-- 6. [전체 리팩토링] 통합 설정 및 안전 보안 센터 모달 -->
+  <div id="modal-settings" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto flex flex-col">
+      <!-- 고정 헤더 -->
+      <div class="flex justify-between items-center border-b border-gray-100 pb-3 flex-shrink-0">
+        <h3 class="text-lg font-bold text-gray-900 flex items-center">
+          <i data-lucide="settings" class="w-5 h-5 text-indigo-600 mr-2"></i>
+          <span>통합 환경설정 및 보안</span>
+        </h3>
+        <button onclick="app.closeModal('settings')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
       </div>
-      
-      <div class="space-y-4">
-        <div>
-          <h4 class="text-xs font-bold text-gray-700 mb-1">내 데이터 백업하기</h4>
-          <p class="text-[11px] text-gray-400 mb-2">작성한 모든 폴더, 단어장, 통계 기록이 텍스트 포맷으로 내려옵니다.</p>
-          <button onclick="app.exportAllData()" class="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-2.5 rounded-xl text-sm font-semibold transition">전체 데이터 백업 코드 생성</button>
-        </div>
 
-        <div class="border-t border-gray-100 pt-4">
-          <h4 class="text-xs font-bold text-gray-700 mb-1">데이터 복원 및 친구 공유코드 받기</h4>
-          <p class="text-[11px] text-gray-400 mb-2">백업된 전체 데이터 코드 혹은 공유 받은 단어장 코드를 아래 상자에 입력해 주세요.</p>
-          <textarea id="backup-restore-code" rows="3" class="w-full text-xs font-mono p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="데이터 복원 코드를 이곳에 붙여넣기 해주세요."></textarea>
-        </div>
-
-        <!-- PWA 오프라인 배포 파일 내보내기 세션 -->
-        <div class="border-t border-gray-100 pt-4 bg-gray-50 -mx-6 -mb-6 p-6 rounded-b-2xl">
-          <h4 class="text-xs font-bold text-gray-700 mb-1 flex items-center">
-            <i data-lucide="smartphone" class="w-4 h-4 text-indigo-600 mr-1"></i>
-            <span>오프라인 독립 배포용 PWA 파일 다운로드</span>
+      <!-- 바디 섹션 -->
+      <div class="space-y-5 overflow-y-auto flex-grow pr-1 text-sm">
+        
+        <!-- 보안 잠금(PIN) 파트 -->
+        <div class="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
+          <h4 class="font-bold text-gray-800 flex items-center text-xs uppercase tracking-wider">
+            <i data-lucide="shield-alert" class="w-4 h-4 text-indigo-600 mr-1.5"></i>
+            <span>보안 잠금 설정 (Private Lock)</span>
           </h4>
-          <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">
-            독립적인 개인 서버나 웹호스팅 환경에 올려서 완전한 오프라인 웹앱(PWA)으로 구동하고 싶으신가요? 
-            아래 버튼을 눌러 필수 파일(`manifest.json` 및 `sw.js`)을 다운로드 하세요.
-          </p>
-          <button onclick="app.downloadPWAFiles()" class="w-full flex items-center justify-center space-x-2 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 py-2.5 rounded-xl text-xs font-bold transition">
-            <i data-lucide="download" class="w-4 h-4"></i>
-            <span>PWA 필수 자산 다운로드 (sw.js & manifest)</span>
-          </button>
+          <p class="text-[11px] text-gray-400 leading-normal">활성화하면 앱 재구동 시 4자리 PIN 비밀번호를 맞추기 전까지 데이터를 완벽히 격리 차단합니다.</p>
+          
+          <div class="flex items-center justify-between pt-2">
+            <span class="font-semibold text-gray-700 text-xs">앱 잠금 활성화</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="security-lock-toggle" onchange="app.toggleSecurityLock()" class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
+
+          <!-- 비밀번호 변경 구역 -->
+          <div id="security-pin-change-area" class="hidden pt-3 border-t border-gray-200 space-y-2">
+            <label class="block text-[11px] font-semibold text-gray-500">새 4자리 비밀번호 PIN 입력</label>
+            <div class="flex space-x-2">
+              <input type="password" id="new-security-pin" maxlength="4" pattern="[0-9]*" inputmode="numeric" class="flex-grow px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-center font-mono text-sm tracking-widest" placeholder="●●●●">
+              <button onclick="app.updateSecurityPin()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition">변경 적용</button>
+            </div>
+          </div>
         </div>
+
+        <!-- 데이터 통합 관리 백업/복원 파트 -->
+        <div class="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
+          <h4 class="font-bold text-gray-800 flex items-center text-xs uppercase tracking-wider">
+            <i data-lucide="database" class="w-4 h-4 text-emerald-600 mr-1.5"></i>
+            <span>전체 데이터 백업 / 복원</span>
+          </h4>
+          <p class="text-[11px] text-gray-400 mb-2">나의 모든 단어장 데이터 구조를 안전하게 복제해 텍스트로 보관하거나 복구합니다.</p>
+          
+          <div class="space-y-2.5">
+            <button onclick="app.exportAllData()" class="w-full bg-white hover:bg-indigo-50 text-indigo-700 py-2 rounded-xl text-xs font-bold border border-gray-200 transition">전체 데이터 복사 (백업)</button>
+            
+            <div class="pt-1">
+              <label class="block text-[11px] font-semibold text-gray-500 mb-1">복원 코드 입력</label>
+              <textarea id="backup-restore-code" rows="2" class="w-full text-xs font-mono p-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder="복사한 백업 데이터 코드를 여기에 붙여넣기 하세요."></textarea>
+              <button onclick="app.importBackupData()" class="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl text-xs font-bold transition">데이터 복원 적용</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- [비공개 개발자 설정 영역] -->
+        <div class="space-y-3 bg-red-50/50 p-4 rounded-xl border border-red-100">
+          <h4 class="font-bold text-red-900 flex items-center text-xs uppercase tracking-wider">
+            <i data-lucide="terminal" class="w-4 h-4 text-red-600 mr-1.5"></i>
+            <span>비공개 개발자 관리</span>
+          </h4>
+          <p class="text-[11px] text-red-700 leading-normal">
+            오프라인 패키지 빌드 영역입니다.<br>
+            <strong>보안 잠금을 위해 본인의 비밀번호를 입력해야만 활성화됩니다.</strong>
+          </p>
+
+          <div class="space-y-2 pt-1" id="dev-verify-area">
+            <div class="flex space-x-2">
+              <input type="password" id="dev-verify-pin" maxlength="4" class="flex-grow px-3 py-2 border border-red-200 rounded-xl text-center font-mono text-sm tracking-widest focus:ring-2 focus:ring-red-500 outline-none bg-white" placeholder="PIN 입력">
+              <button onclick="app.unlockDeveloperMode()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition">권한 인증</button>
+            </div>
+          </div>
+
+          <!-- 개발자 권한 정상 획득 시 동적으로 드러나는 PWA 추출 버튼 -->
+          <div id="dev-pwa-download-container" class="hidden pt-1">
+            <div class="bg-white p-3 rounded-lg border border-red-200 space-y-2">
+              <p class="text-[11px] text-red-600 font-bold">인증 완료: 독립 PWA 다운로드</p>
+              <button onclick="app.downloadPWAFiles()" class="w-full flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>PWA 필수 파일 패키지 내려받기</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
 
-      <div class="flex justify-end space-x-2 pt-2 border-t border-gray-100 mt-4">
-        <button onclick="app.closeModal('backup-restore')" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition">취소</button>
-        <button onclick="app.importBackupData()" class="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">데이터 복원 실행</button>
+      <!-- 고정 하단 풋터 -->
+      <div class="flex justify-end pt-3 border-t border-gray-100 flex-shrink-0">
+        <button onclick="app.closeModal('settings')" class="px-5 py-2.5 text-sm font-semibold text-gray-500 hover:bg-gray-100 rounded-xl transition">설정 닫기</button>
       </div>
     </div>
   </div>
@@ -699,7 +815,7 @@
         }
       ],
       cards: [
-        { id: "c-1", deckId: "deck-1", front: "선의의 제3자", back: "어떤 사정을 알지 못하는 제3자. 법률상 보호 대상이 된다.", desc: "민법 제107조 제2항 등 참고" },
+        { id: "c-1", deckId: "deck-1", front: "선의의 제3자", back: "어떤 사정을 알지 못하는 제3자. 법률상 보호 대상이 된다.", desc: "민법 제107조 제2항 참고" },
         { id: "c-2", deckId: "deck-1", front: "반사회질서의 법률행위", back: "선량한 풍속 기타 사회질서에 위반한 사항을 내용으로 하는 법률행위는 무효로 한다.", desc: "민법 제103조" },
         { id: "c-3", deckId: "deck-1", front: "허위표시", back: "상대방과 통정하여 허위로 한 의사표시. 당사자 사이에서는 언제나 무효이다.", desc: "민법 제108조" },
         { id: "c-4", deckId: "deck-1", front: "동기의 착오", back: "의사표시를 하게 된 동기에만 착오가 있는 것. 원칙적으로 취소할 수 없다.", desc: "예외: 동기가 표시되거나 알려진 경우 취소 가능" },
@@ -714,6 +830,11 @@
         this.folders = [];
         this.decks = [];
         this.cards = [];
+
+        // 보안 PIN 시스템 관리
+        this.appPasscode = ""; 
+        this.enteredPin = ""; 
+        this.securityLockEnabled = false;
 
         // 현재 앱 탐색 상태 저장
         this.currentFolderId = null;
@@ -748,9 +869,155 @@
 
       init() {
         this.loadDataFromStorage();
+        this.checkSecurityLockState(); // 앱 보안 잠금 검증 단계
         this.renderFolders();
         this.initEventListeners();
         this.initPWA(); 
+        lucide.createIcons();
+      }
+
+      // ==================== [보안 강화] 앱 비밀번호 보호 프로세스 ====================
+      checkSecurityLockState() {
+        const storedLock = localStorage.getItem("flashcard_security_lock_enabled");
+        const storedPin = localStorage.getItem("flashcard_app_passcode");
+
+        if (storedLock === "true" && storedPin && storedPin.length === 4) {
+          this.securityLockEnabled = true;
+          this.appPasscode = storedPin;
+          
+          // 메인 본체를 숨기고 안전 잠금 화면을 활성화시킵니다.
+          document.getElementById("app-lock-screen").classList.remove("hidden");
+          this.enteredPin = "";
+          this.updatePinDots();
+        } else {
+          this.securityLockEnabled = false;
+          document.getElementById("app-lock-screen").classList.add("hidden");
+        }
+      }
+
+      // 가상 키패드 및 하드웨어 키보드 입력 핸들러
+      pressKey(key) {
+        if (!this.securityLockEnabled) return;
+
+        const errorMsg = document.getElementById("lock-error-msg");
+        errorMsg.classList.add("opacity-0");
+
+        if (key === "clear") {
+          this.enteredPin = "";
+        } else if (key === "back") {
+          this.enteredPin = this.enteredPin.slice(0, -1);
+        } else {
+          if (this.enteredPin.length < 4) {
+            this.enteredPin += key;
+          }
+        }
+
+        this.updatePinDots();
+
+        // 4자리가 다 차면 자동 비밀번호 타당성 검사 수행
+        if (this.enteredPin.length === 4) {
+          setTimeout(() => {
+            this.verifyPasscode();
+          }, 150);
+        }
+      }
+
+      updatePinDots() {
+        for (let i = 0; i < 4; i++) {
+          const dot = document.getElementById(`pin-${i}`);
+          if (i < this.enteredPin.length) {
+            dot.classList.add("active");
+          } else {
+            dot.classList.remove("active");
+          }
+        }
+      }
+
+      verifyPasscode() {
+        if (this.enteredPin === this.appPasscode) {
+          this.showToast("반갑습니다, 이경혜님! 잠금이 해제되었습니다.");
+          document.getElementById("app-lock-screen").classList.add("hidden");
+          this.enteredPin = "";
+          this.updatePinDots();
+        } else {
+          const errorMsg = document.getElementById("lock-error-msg");
+          errorMsg.classList.remove("opacity-0");
+          this.enteredPin = "";
+          this.updatePinDots();
+          
+          // 햅틱 진동 효과처럼 인디케이터 흔들림 제공 대신 시각적 초기화 피드백
+          document.querySelectorAll(".pin-dot").forEach(dot => {
+            dot.classList.add("bg-red-500");
+            setTimeout(() => dot.classList.remove("bg-red-500"), 300);
+          });
+        }
+      }
+
+      // 설정 메뉴 전용 보안 통제 함수
+      toggleSecurityLock() {
+        const toggle = document.getElementById("security-lock-toggle");
+        const changeArea = document.getElementById("security-pin-change-area");
+
+        if (toggle.checked) {
+          changeArea.classList.remove("hidden");
+          this.showToast("설정할 새 4자리 비밀번호 PIN을 입력하세요.");
+        } else {
+          this.showConfirm("앱 잠금 해제", "보안 잠금을 해제하면 누구나 앱을 열고 단어장을 볼 수 있게 됩니다. 해제하시겠습니까?", () => {
+            localStorage.setItem("flashcard_security_lock_enabled", "false");
+            localStorage.removeItem("flashcard_app_passcode");
+            this.securityLockEnabled = false;
+            this.appPasscode = "";
+            changeArea.classList.add("hidden");
+            this.showToast("보안 잠금이 완전히 해제되었습니다.");
+          }, () => {
+            toggle.checked = true;
+          });
+        }
+      }
+
+      updateSecurityPin() {
+        const pinInput = document.getElementById("new-security-pin");
+        const pinValue = pinInput.value.trim();
+
+        if (pinValue.length !== 4 || isNaN(pinValue)) {
+          this.showToast("오직 숫자 4자리만 입력해 주셔야 합니다.");
+          return;
+        }
+
+        localStorage.setItem("flashcard_security_lock_enabled", "true");
+        localStorage.setItem("flashcard_app_passcode", pinValue);
+        this.appPasscode = pinValue;
+        this.securityLockEnabled = true;
+
+        pinInput.value = "";
+        this.showToast("비밀번호 PIN 보안 설정이 완료되었습니다!");
+      }
+
+      // 비공개 개발자 권한 해제 로직 
+      unlockDeveloperMode() {
+        const verifyInput = document.getElementById("dev-verify-pin");
+        const pinVal = verifyInput.value.trim();
+
+        if (!this.securityLockEnabled) {
+          // 비밀번호 미설정 시
+          if (pinVal === "0000") {
+            this.revealPWAButton();
+            return;
+          }
+          this.showToast("인증 실패! (설정된 앱 잠금 비밀번호가 없을 때 기본값은 '0000'입니다.)");
+        } else {
+          if (pinVal === this.appPasscode) {
+            this.revealPWAButton();
+          } else {
+            this.showToast("인증 실패! 설정된 앱 PIN 비밀번호가 일치하지 않습니다.");
+          }
+        }
+      }
+
+      revealPWAButton() {
+        this.showToast("비공개 PWA 빌더 개발자 자격이 인증되었습니다.");
+        document.getElementById("dev-verify-area").classList.add("hidden");
+        document.getElementById("dev-pwa-download-container").classList.remove("hidden");
         lucide.createIcons();
       }
 
@@ -844,6 +1111,7 @@
         });
       }
 
+      // 비공개 개발자 자산 빌드 파일 내보내기 구현
       downloadPWAFiles() {
         const swContent = `// Flashcard Master PWA Service Worker (V1)
 const CACHE_NAME = 'flashcard-master-cache-v1';
@@ -969,15 +1237,6 @@ self.addEventListener('fetch', (event) => {
         this.decks = JSON.parse(JSON.stringify(DEFAULT_DATA.decks));
         this.cards = JSON.parse(JSON.stringify(DEFAULT_DATA.cards));
         this.saveDataToStorage();
-      }
-
-      resetToDefaultData() {
-        this.showConfirm("기록 초기화", "모든 데이터가 지워지고 샘플 데이터로 초기화됩니다. 계속하시겠습니까?", () => {
-          this.setSampleData();
-          this.showScreen("folder-list");
-          this.renderFolders();
-          this.showToast("기본 데이터로 초기화되었습니다.");
-        });
       }
 
       showScreen(screenId) {
@@ -1130,16 +1389,13 @@ self.addEventListener('fetch', (event) => {
         document.getElementById("current-deck-title").textContent = deck.name;
         document.getElementById("current-deck-desc").textContent = deck.desc || "설명이 등록되지 않았습니다.";
 
-        // 통계 갱신
         const deckCards = this.cards.filter(c => String(c.deckId) === String(deckId));
         document.getElementById("deck-card-count").textContent = `${deckCards.length}개`;
         document.getElementById("deck-success-rate").textContent = deck.successRate || "-";
         document.getElementById("deck-last-studied").textContent = deck.lastStudied || "기록 없음";
 
-        // 단어 목록 데이터 테이블 렌더링
         this.renderWordsTable(deckCards);
 
-        // 학습 시작 버튼 제어
         const startBtn = document.getElementById("start-study-btn");
         if (deckCards.length === 0) {
           startBtn.disabled = true;
@@ -1186,6 +1442,7 @@ self.addEventListener('fetch', (event) => {
         lucide.createIcons();
       }
 
+      // [복원 완료] XSS 공격 방지용 이스케이프 함수
       escapeHTML(str) {
         if (!str) return '';
         return str.replace(/[&<>'"]/g, 
@@ -1198,7 +1455,14 @@ self.addEventListener('fetch', (event) => {
         const deckCards = this.cards.filter(c => String(c.deckId) === String(this.currentDeckId));
         if (deckCards.length === 0) return;
 
-        this.sessionCards = this.shuffleArray([...deckCards]);
+        const orderType = document.getElementById("study-order-select")?.value || "random";
+
+        if (orderType === "random") {
+          this.sessionCards = this.shuffleArray([...deckCards]);
+        } else {
+          this.sessionCards = [...deckCards];
+        }
+
         this.originalSessionLength = this.sessionCards.length;
         this.currentSessionIndex = 0;
         this.relearnSessionMode = false;
@@ -1399,7 +1663,26 @@ self.addEventListener('fetch', (event) => {
         });
       }
 
-      // ==================== 관리 수동 모달 기능 ====================
+      // ==================== 설정 및 보안 센터 기능 관리 ====================
+      openSettingsModal() {
+        const lockEnabled = localStorage.getItem("flashcard_security_lock_enabled") === "true";
+        document.getElementById("security-lock-toggle").checked = lockEnabled;
+        
+        if (lockEnabled) {
+          document.getElementById("security-pin-change-area").classList.remove("hidden");
+        } else {
+          document.getElementById("security-pin-change-area").classList.add("hidden");
+        }
+
+        // 인증 상태 초기화
+        document.getElementById("dev-verify-pin").value = "";
+        document.getElementById("dev-verify-area").classList.remove("hidden");
+        document.getElementById("dev-pwa-download-container").classList.add("hidden");
+
+        this.openModal("settings");
+      }
+
+      // ==================== 데이터 폴더/단어장 CRUD 비즈니스 로직 ====================
 
       openNewFolderModal() {
         document.getElementById("modal-folder-title").textContent = "새 폴더 만들기";
@@ -1785,12 +2068,7 @@ self.addEventListener('fetch', (event) => {
         setTimeout(() => ind.classList.add("opacity-0"), 2000);
       }
 
-      // ==================== 백업 및 복구 모달 ====================
-
-      showBackupRestoreModal() {
-        document.getElementById("backup-restore-code").value = "";
-        this.openModal("backup-restore");
-      }
+      // ==================== 백업 및 복구 프로세스 ====================
 
       exportAllData() {
         const data = {
@@ -1806,7 +2084,7 @@ self.addEventListener('fetch', (event) => {
         target.value = encoded;
         target.select();
         document.execCommand("copy");
-        this.showToast("전체 데이터 백업 코드가 클립보드에 복사되었습니다.");
+        this.showToast("전체 데이터 백업 코드가 복제되어 복사되었습니다.");
       }
 
       importBackupData() {
@@ -1826,7 +2104,7 @@ self.addEventListener('fetch', (event) => {
               this.decks = parsed.decks || [];
               this.cards = parsed.cards || [];
               this.saveDataToStorage();
-              this.closeModal("backup-restore");
+              this.closeModal("settings");
               this.renderFolders();
               this.showToast("전체 데이터가 완벽히 복원되었습니다.");
             });
@@ -1857,7 +2135,7 @@ self.addEventListener('fetch', (event) => {
             this.decks.push(newDeck);
             this.cards.push(...newCards);
             this.saveDataToStorage();
-            this.closeModal("backup-restore");
+            this.closeModal("settings");
             this.renderDecks();
             this.showToast("공유 단어장을 이 폴더에 성공적으로 가져왔습니다.");
           } else {
@@ -1900,6 +2178,18 @@ self.addEventListener('fetch', (event) => {
         });
 
         window.addEventListener("keydown", (e) => {
+          // 보안 잠금 상태면 키보드 이벤트 우회
+          if (this.securityLockEnabled && !document.getElementById("app-lock-screen").classList.contains("hidden")) {
+            if (e.key >= "0" && e.key <= "9") {
+              this.pressKey(e.key);
+            } else if (e.key === "Backspace") {
+              this.pressKey("back");
+            } else if (e.key === "Escape") {
+              this.pressKey("clear");
+            }
+            return;
+          }
+
           const studyScreen = document.getElementById("screen-study");
           if (studyScreen.classList.contains("hidden")) return;
 
@@ -1919,12 +2209,13 @@ self.addEventListener('fetch', (event) => {
       }
 
       handleDragStart(clientX, clientY) {
+        if (this.securityLockEnabled && !document.getElementById("app-lock-screen").classList.contains("hidden")) return;
         this.touchStart.x = clientX;
         this.touchStart.y = clientY;
         this.isSwiping = false;
 
         const card = document.getElementById("swipe-card");
-        card.style.transition = "none";
+        if (card) card.style.transition = "none";
       }
 
       handleDragMove(clientX, clientY) {
@@ -1941,9 +2232,10 @@ self.addEventListener('fetch', (event) => {
         }
 
         const card = document.getElementById("swipe-card");
-        
-        const rotate = deltaX * 0.08;
-        card.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${rotate}deg)`;
+        if (card) {
+          const rotate = deltaX * 0.08;
+          card.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${rotate}deg)`;
+        }
 
         this.updateGestureIndicators(deltaX, deltaY);
       }
@@ -1970,8 +2262,10 @@ self.addEventListener('fetch', (event) => {
           this.swipeAction('dontknow');
         } else {
           const card = document.getElementById("swipe-card");
-          card.style.transition = "transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
-          card.style.transform = "translate3d(0,0,0) rotate(0deg)";
+          if (card) {
+            card.style.transition = "transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
+            card.style.transform = "translate3d(0,0,0) rotate(0deg)";
+          }
         }
 
         this.touchStart = { x: 0, y: 0 };
@@ -1984,6 +2278,8 @@ self.addEventListener('fetch', (event) => {
         const indPerfect = document.getElementById("indicator-perfect");
         const indDontKnow = document.getElementById("indicator-dontknow");
         const indPrev = document.getElementById("indicator-prev");
+
+        if (!indKnow || !indPerfect || !indDontKnow || !indPrev) return;
 
         indKnow.style.opacity = "0";
         indPerfect.style.opacity = "0";
@@ -2013,7 +2309,7 @@ self.addEventListener('fetch', (event) => {
         const indicators = ["indicator-know", "indicator-perfect", "indicator-dontknow", "indicator-prev"];
         indicators.forEach(id => {
           const el = document.getElementById(id);
-          el.style.opacity = "0";
+          if (el) el.style.opacity = "0";
         });
       }
 
@@ -2037,7 +2333,7 @@ self.addEventListener('fetch', (event) => {
         }, 2500);
       }
 
-      showConfirm(title, desc, callback) {
+      showConfirm(title, desc, callback, cancelCallback) {
         const modal = document.getElementById("confirm-modal");
         document.getElementById("confirm-title").textContent = title;
         document.getElementById("confirm-desc").textContent = desc;
@@ -2052,6 +2348,7 @@ self.addEventListener('fetch', (event) => {
 
         cancelBtn.onclick = () => {
           cleanup();
+          if (cancelCallback) cancelCallback();
         };
 
         okBtn.onclick = () => {
